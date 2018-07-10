@@ -1,9 +1,9 @@
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn import datasets
 from sklearn.cluster import DBSCAN
-from tda import mapper, filter
-from tda.cover import Cover
-from tda.plot import show, Color
+from tmap.tda import mapper, filter
+from tmap.tda.cover import Cover
+from tmap.tda.plot import show, Color
 
 
 iris = datasets.load_iris()

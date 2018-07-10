@@ -40,7 +40,10 @@ class Color(object):
         if target_by not in ["sample", "node"]:
             raise ValueError("target values must be by 'sample' or 'node'")
         # target values should be numbers, check and encode categorical labels
-        if ((type(target[0][0]) != int) and (type(target[0][0]) != float)):
+        if ((type(target[0][0]) != int)
+                and (type(target[0][0]) != float)
+                and (not isinstance(target[0][0],np.number))
+        ):
             self.label_encoder = LabelEncoder()
             self.target = self.label_encoder.fit_transform(target)
         else:
@@ -165,7 +168,10 @@ def show(data, graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2,
     if color.dtype == "categorical":
         for label in set([it[0] for it in color.labels]):
             if color.label_encoder:
-                label_color = legend_lookup[color.label_encoder.fit_transform(label)]
+                try:
+                    label_color = legend_lookup[color.label_encoder.fit_transform(label)]
+                except:
+                    import pdb;pdb.set_trace()
             else:
                 label_color = legend_lookup[label]
             ax.plot([], [], 'o', color=label_color, label=label, markersize=10)

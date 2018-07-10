@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from sklearn import decomposition, manifold
-from tda.metric import Metric
+from tmap.tda.metric import Metric
 
 
 _METRIC_BUILT_IN = ["braycurtis", "canberra", "chebyshev", "cityblock", "correlation", "cosine", "dice", "euclidean",

@@ -1,13 +1,13 @@
-from sklearn.preprocessing import MinMaxScaler, LabelEncoder, Imputer
+import os
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.cluster import DBSCAN
-import numpy as np
-from tda import mapper, filter
-from tda.cover import Cover
-from tda.plot import show, Color
-from tda.metric import Metric
-from tda.utils import optimize_dbscan_eps
-from netx.SAFE import SAFE_batch, get_SAFE_summary, SAFE_single
-from test import load_data
+from tmap.tda import mapper, filter
+from tmap.tda.cover import Cover
+from tmap.tda.plot import show, Color
+from tmap.tda.metric import Metric
+from tmap.tda.utils import optimize_dbscan_eps
+from tmap.netx.SAFE import SAFE_batch, get_SAFE_summary
+from tmap.test import load_data
 
 
 # load taxa abundance data, sample metadata and precomputed distance matrix
@@ -52,4 +52,4 @@ show(data=X, graph=graph, color=color, fig_size=(10, 10), node_size=15, mode='sp
 
 safe_summary = get_SAFE_summary(graph=graph, meta_data=X, safe_scores=safe_scores,
                                 n_iter_value=n_iter, p_value=0.01)
-safe_summary.to_csv('../example/FGFP_SAFE_ranking_genus_1000.csv', index=True)
+safe_summary.to_csv(os.path.join(os.path.dirname(__file__),'../example/FGFP_SAFE_ranking_genus_1000.csv'), index=True)

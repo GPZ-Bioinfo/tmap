@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
-from tda.cover import Cover
 import numpy as np
 import pandas as pd
 import itertools
-from sklearn import cluster, preprocessing
+from sklearn import cluster
 
 
 class Mapper(object):
