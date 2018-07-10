@@ -1,8 +1,8 @@
 from sklearn import datasets
 from sklearn.cluster import DBSCAN
-from tda import mapper, filter
-from tda.cover import Cover
-from tda.plot import show, Color
+from tmap.tda import mapper, filter
+from tmap.tda.cover import Cover
+from tmap.tda.plot import show, Color
 
 
 X, y = datasets.make_circles(n_samples=5000, noise=0.05, factor=0.3)
