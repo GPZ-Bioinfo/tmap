@@ -1,9 +1,9 @@
 from sklearn import datasets
 from sklearn.preprocessing import MinMaxScaler
-from tda import mapper, filter
-from tda.cover import Cover
+from tmap.tda import mapper, filter
+from tmap.tda.cover import Cover
 from sklearn.cluster import DBSCAN
-from tda.plot import Color, show
+from tmap.tda.plot import Color, show
 
 
 digits = datasets.load_digits()
