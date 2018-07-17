@@ -20,7 +20,7 @@ tm = mapper.Mapper(verbose=1)
 
 # TDA Step2. Projection
 metric = Metric(metric="precomputed")
-lens = [filter.MDS(components=[0, 1], metric=metric)]
+lens = [filter.MDS(components=[0, 1], metric=metric,random_state=100)]
 projected_X = tm.filter(dm, lens=lens)
 
 # Step4. Covering, clustering & mapping
@@ -34,7 +34,7 @@ graph = tm.map(data=X, cover=cover, clusterer=clusterer)
 # target_feature = 'Faecalibacterium'
 # target_feature = 'Prevotella'
 target_feature = 'Bacteroides'
-n_iter = 10
+n_iter = 1000
 safe_scores = SAFE_batch(graph, meta_data=X, n_iter=n_iter, threshold=0.05)
 target_safe_score = safe_scores[target_feature]
 

@@ -161,7 +161,7 @@ def get_enriched_samples(enriched_nodes, nodes):
             for feature, node_ids in enriched_nodes.items()}
 
 
-def get_SAFE_summary(graph, meta_data, safe_scores, n_iter_value, p_value=0.01):
+def get_SAFE_summary(graph, meta_data, safe_scores, n_iter_value, p_value=0.01,_output_details=False):
     """
     summary the SAFE scores for feature enrichment results
     :param graph:
@@ -186,6 +186,12 @@ def get_SAFE_summary(graph, meta_data, safe_scores, n_iter_value, p_value=0.01):
     safe_enriched_samples_n = {feature: len(sample_ids) for feature, sample_ids in safe_enriched_samples.items()}
     safe_enriched_score = {feature: np.sum(safe_scores.loc[feature, safe_enriched_nodes[feature]])
                            for feature in feature_names}
+
+    if _output_details:
+        safe_summary = {'enriched_nodes':safe_enriched_nodes,
+                        'enriched_score':safe_enriched_score,
+                        }
+        return safe_summary
 
     # calculate enriched ratios ('enriched abundance' / 'total abundance')
     feature_abundance = meta_data.sum(axis=0)
