@@ -145,6 +145,6 @@ class Mapper(object):
         graph["node_keys"] = node_keys
         graph["node_positions"] = node_positions
         graph["node_sizes"] = node_sizes
-
+        graph['params'] = {'cluster':clusterer.get_params(),'cover':{'resolution':cover.resolution,'overlap':cover.overlap}}
         return graph
 
