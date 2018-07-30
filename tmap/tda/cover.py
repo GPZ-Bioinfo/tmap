@@ -27,11 +27,13 @@ class Cover(object):
         # generate hypercubes (or covering) using a generator function
         return self._get_hypercubes()
 
-    def _get_hypercubes(self):
+    def _get_hypercubes(self,output_bounds=False):
         # generate hypercube index based on the resolution parameter (how many and where the hypercube is?)
         bins = itertools.product(np.arange(self.resolution), repeat=self.n_dimensions)
         n_bins = self.resolution**self.n_dimensions
         hypercubes = np.zeros((n_bins, self.n_points), dtype=bool)
+        bounds_with_overlap = []
+        bounds_without_overlap = []
         # todo: improve the iterations?
         for i, bin in enumerate(bins):
             lower_bound = self.floor + bin * self.chunk_width
@@ -39,4 +41,9 @@ class Cover(object):
             lower_bound -= self.overlap_width
             mask = np.all((self.data >= lower_bound) & (self.data < upper_bound), axis=1)
             hypercubes[i, :] = mask
-        return hypercubes
+            bounds_with_overlap.append((lower_bound,upper_bound))
+            bounds_without_overlap.append((lower_bound + self.overlap_width,upper_bound - self.overlap_width))
+        if output_bounds:
+            return bounds_with_overlap,bounds_without_overlap
+        else:
+            return hypercubes

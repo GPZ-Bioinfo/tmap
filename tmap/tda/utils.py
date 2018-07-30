@@ -1,5 +1,6 @@
 from sklearn.neighbors import *
 import numpy as np
+import pandas as pd
 import csv,os
 
 def optimize_dbscan_eps(data, threshold=90):
@@ -10,6 +11,34 @@ def optimize_dbscan_eps(data, threshold=90):
     # to have a percentage of the 'threshold' of points to have their nearest-neighbor covered
     eps = np.percentile(dist[:, 1], threshold)
     return eps
+
+def construct_node_data(graph,data,feature):
+    nodes = graph['nodes']
+    node_data = {k: data.iloc[v, data.columns.get_loc(feature)].mean() for k, v in nodes.items()}
+    return node_data
+
+def cover_ratio(graph,data):
+    nodes = graph['nodes']
+    all_samples_in_nodes = [_ for vals in nodes.values() for _ in vals]
+    n_all_sampels = data.shape[0]
+    n_in_nodes = len(set(all_samples_in_nodes))
+    return n_in_nodes/float(n_all_sampels) *100
+
+def safe_scores_IO(safe_scores,filepath=None,mode='w'):
+    if mode == 'w':
+        if not isinstance(safe_scores,pd.DataFrame):
+            safe_scores = pd.DataFrame.from_dict(safe_scores,orient='index')
+            safe_scores = safe_scores.T
+        else:
+            safe_scores = safe_scores
+        safe_scores.to_csv(filepath,index=True)
+    elif mode == 'rd':
+        safe_scores = pd.read_csv(safe_scores,index_col=0)
+        safe_scores = safe_scores.to_dict()
+        return safe_scores
+    elif mode == 'r':
+        safe_scores = pd.read_csv(safe_scores,index_col=0)
+        return safe_scores
 
 def output_graph(graph,filepath,sep='\t'):
     """
@@ -72,7 +101,6 @@ def output_Edge_data(graph,filepath,sep='\t'):
     """
     if isinstance(graph,dict):
         if "edge_weights" in graph.keys() and "edges" in graph.keys():
-            "0 (interacts with) 1"
             edges = graph["edges"]
             edge_weights = graph["edge_weights"]
             with open(os.path.realpath(filepath), 'w') as csvfile:
@@ -82,6 +110,6 @@ def output_Edge_data(graph,filepath,sep='\t'):
                     spamwriter.writerow(["%s (interacts with) %s" % (node1,node2),
                                          edge_weights[(node1,node2)]])
         else:
-            exit("Missing key 'edge_weights' or 'edges' in graph")
+            print("Missing key 'edge_weights' or 'edges' in graph")
     else:
-        exit("graph should be a dictionary")
+        print("graph should be a dictionary")

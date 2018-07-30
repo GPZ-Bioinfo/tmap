@@ -81,6 +81,8 @@ class Color(object):
 
         q1, median, q3 = np.percentile(target, 25), np.percentile(target, 50), np.percentile(target, 75)
 
+        # if len(set([q1,median,q3])) != 3:
+        #     same_bounds = []
         index_min_q1 = np.where(target <= q1)[0]
         index_q1_median = np.where(((target >= q1) & (target <= median)))[0]
         index_median_q3 = np.where(((target >= median) & (target <= q3)))[0]
@@ -91,9 +93,13 @@ class Color(object):
         target_median_q3 = scaler_median_q3.fit_transform(target[index_median_q3])
         target_q3_max = scaler_q3_max.fit_transform(target[index_q3_max])
 
-        rescaled_target[index_min_q1] = target_min_q1
-        rescaled_target[index_q1_median] = target_q1_median
+        if all(target_q3_max == 0.75):
+            target_q3_max = np.ones(target_q3_max.shape)
+        if q1 == median == q3:
+            target_q3_max = np.array([_ if _!= 0.75 else 0 for _ in target_q3_max[:,0]]).reshape(target_q3_max.shape)
         rescaled_target[index_median_q3] = target_median_q3
+        rescaled_target[index_q1_median] = target_q1_median
+        rescaled_target[index_min_q1] = target_min_q1
         rescaled_target[index_q3_max] = target_q3_max
 
         return rescaled_target
@@ -142,7 +148,6 @@ def show(data, graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2,
     :return:
     """
     # todo: add file path for graph saving
-
     node_keys = graph["node_keys"]
     node_positions = graph["node_positions"]
     node_sizes = graph["node_sizes"]
@@ -152,8 +157,11 @@ def show(data, graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2,
     sizes = (node_sizes / max_node_size) * (node_size ** 2)
 
     # map node colors
-    if color is None:
-        color_map = {node_id: 'red' for node_id in node_keys}
+    if color is None or type(color) == str:
+        if color is None:
+            color = 'red'
+        color_map = {node_id: color for node_id in node_keys}
+        target2colors = (np.zeros((len(node_keys), 1)),[color] * len(node_keys))
     else:
         color_map, target2colors = color.get_colors(graph["nodes"])
     colorlist = [color_map[it] for it in node_keys]
@@ -165,33 +173,31 @@ def show(data, graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2,
     legend_lookup = dict(zip(node_target_values.reshape(-1,), node_colors))
 
     # add categorical legend
-    if color.dtype == "categorical":
-        for label in set([it[0] for it in color.labels]):
-            if color.label_encoder:
-                try:
+    if isinstance(color,Color):
+        if color.dtype == "categorical":
+            for label in set([it[0] for it in color.labels]):
+                if color.label_encoder:
                     label_color = legend_lookup[color.label_encoder.fit_transform(label)]
-                except:
-                    import pdb;pdb.set_trace()
-            else:
-                label_color = legend_lookup[label]
-            ax.plot([], [], 'o', color=label_color, label=label, markersize=10)
-        legend = ax.legend(numpoints=1, loc="upper right")
-        legend.get_frame().set_facecolor('#bebebe')
+                else:
+                    label_color = legend_lookup[label]
+                ax.plot([], [], 'o', color=label_color, label=label, markersize=10)
+            legend = ax.legend(numpoints=1, loc="upper right")
+            legend.get_frame().set_facecolor('#bebebe')
 
-    # add numerical colorbar
-    elif color.dtype == "numerical":
-        legend_values = sorted([_ for _ in legend_lookup])
-        legned_colors = [legend_lookup[_] for _ in legend_values]
+        # add numerical colorbar
+        elif color.dtype == "numerical":
+            legend_values = sorted([_ for _ in legend_lookup])
+            legned_colors = [legend_lookup[_] for _ in legend_values]
 
-        cmap = mcolors.LinearSegmentedColormap.from_list('my_cmap', legned_colors)
-        norm = mcolors.Normalize(min(legend_values), max(legend_values))
-        sm = cm.ScalarMappable(cmap=cmap, norm=norm)
-        sm.set_array([])
+            cmap = mcolors.LinearSegmentedColormap.from_list('my_cmap', legned_colors)
+            norm = mcolors.Normalize(min(legend_values), max(legend_values))
+            sm = cm.ScalarMappable(cmap=cmap, norm=norm)
+            sm.set_array([])
 
-        cb = fig.colorbar(sm, shrink=0.5)
-        cb.ax.yaxis.set_ticks_position('right')
-        cb.ax.text(0.5, -0.02, '%.2f' % min(legend_values), ha='center', va='top', weight='bold')
-        cb.ax.text(0.5, 1.02, '%.2f' % max(legend_values), ha='center', va='bottom', weight='bold')
+            cb = fig.colorbar(sm, shrink=0.5)
+            cb.ax.yaxis.set_ticks_position('right')
+            cb.ax.text(0.5, -0.02, '%.2f' % min(legend_values), ha='center', va='top', weight='bold')
+            cb.ax.text(0.5, 1.02, '%.2f' % max(legend_values), ha='center', va='bottom', weight='bold')
 
     if mode == 'spring':
         pos = {}

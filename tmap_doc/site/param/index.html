@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  
+  <link rel="shortcut icon" href="../img/favicon.ico">
+  <title>Parameter Selection - tmap</title>
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+
+  <link rel="stylesheet" href="../css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../css/theme_extra.css" type="text/css" />
+  <link rel="stylesheet" href="../css/highlight.css">
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "Parameter Selection";
+    var mkdocs_page_input_path = "param.md";
+    var mkdocs_page_url = "/param/";
+  </script>
+  
+  <script src="../js/jquery-2.1.1.min.js"></script>
+  <script src="../js/modernizr-2.8.3.min.js"></script>
+  <script type="text/javascript" src="../js/highlight.pack.js"></script> 
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+      <div class="wy-side-nav-search">
+        <a href=".." class="icon icon-home"> tmap</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+	<ul class="current">
+	  
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="..">tmap</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <span class="caption-text">User guide</span>
+    <ul class="subnav">
+                <li class="">
+                    
+    <a class="" href="../basic/">Basic Usage</a>
+                </li>
+                <li class=" current">
+                    
+    <a class="current" href="./">Parameter Selection</a>
+    <ul class="subnav">
+            
+    <li class="toctree-l3"><a href="#how-to-choose-parameters-in-tmap">How to choose parameters in tmap</a></li>
+    
+        <ul>
+        
+            <li><a class="toctree-l4" href="#selecting-components-in-filter">Selecting components in filter</a></li>
+        
+            <li><a class="toctree-l4" href="#selecting-resolution-and-overlap-in-cover">Selecting resolution and overlap in Cover</a></li>
+        
+            <li><a class="toctree-l4" href="#selecting-eps-and-min_samples-in-dbscan">Selecting eps and min_samples in DBSCAN</a></li>
+        
+            <li><a class="toctree-l4" href="#optimization-of-cover-ratio">Optimization of cover ratio</a></li>
+        
+            <li><a class="toctree-l4" href="#summarize">Summarize</a></li>
+        
+        </ul>
+    
+
+    </ul>
+                </li>
+                <li class="">
+                    
+    <a class="" href="../vis/">Visulization</a>
+                </li>
+                <li class="">
+                    
+    <a class="" href="../association/">Association</a>
+                </li>
+                <li class="">
+                    
+    <a class="" href="../how2work/">How TMAP work</a>
+                </li>
+                <li class="">
+                    
+    <a class="" href="../example/">Demonstrate a few examples</a>
+                </li>
+                <li class="">
+                    
+    <a class="" href="../api/">API Reference</a>
+                </li>
+                <li class="">
+                    
+    <a class="" href="../reference/">Reference</a>
+                </li>
+    </ul>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <span class="caption-text">About</span>
+    <ul class="subnav">
+                <li class="">
+                    
+    <a class="" href="../1/">License</a>
+                </li>
+                <li class="">
+                    
+    <a class="" href="../2/">Release Notes</a>
+                </li>
+    </ul>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="../FAQ/">FAQ</a>
+	    </li>
+          
+        </ul>
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="..">tmap</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="..">Docs</a> &raquo;</li>
+    
+      
+        
+          <li>User guide &raquo;</li>
+        
+      
+    
+    <li>Parameter Selection</li>
+    <li class="wy-breadcrumbs-aside">
+      
+        <a href="https://github.com/444thLiao/tmap/edit/master/docs/param.md"
+          class="icon icon-github"> Edit on GitHub</a>
+      
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <h1 id="how-to-choose-parameters-in-tmap">How to choose parameters in tmap</h1>
+<p>While tmap has a simple usage way to map a high-dimension data into a 2d graph, in practice there are several parameters in tmap would influence the final graph. We will demonstrate how these parameters change would affect the final graph and how to choose them.</p>
+<h2 id="selecting-components-in-filter">Selecting <code>components</code> in <code>filter</code></h2>
+<p>The primary parameter to effect the resulting is the <code>components</code> in <code>filter</code>. If we explore the algorithms of <strong><em>tmap</em></strong> in <a href="../how2work/#how-tmap-work">how tmap work</a>, we could know that increasing the number components of filter will exponential increase the time of calculation and also the number of edges/nodes. Besides, changing the way of projection or chosen components is altering the angle of view to data points clouds and it will also impact the final graph we extracted from original data.</p>
+<pre><code class="python3">from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn import datasets
+from sklearn.cluster import DBSCAN
+from tmap.tda import mapper, filter
+from tmap.tda.cover import Cover
+from tmap.tda.plot import show, Color
+
+
+iris = datasets.load_iris()
+X = iris.data
+y = iris.target
+
+# Step1. initiate a Mapper
+tm = mapper.Mapper(verbose=1)
+
+# Step2. Projection
+lens = [filter.MDS(components=[0, 1],random_state=100)]
+projected_X = tm.filter(X, lens=lens)
+
+# Step3. Covering, clustering &amp; mapping
+clusterer = DBSCAN(eps=0.75, min_samples=1)
+cover = Cover(projected_data=MinMaxScaler().fit_transform(projected_X), resolution=20, overlap=0.75)
+graph = tm.map(data=StandardScaler().fit_transform(X), cover=cover, clusterer=clusterer)
+
+show(data=X,graph=graph, color='b', fig_size=(10, 10), node_size=15, mode='spring', strength=0.03)
+</code></pre>
+
+<pre><code>Filtering by MDS.
+...calculate distance matrix using the euclidean metric.
+Finish filtering of points cloud data.
+Mapping on data (150, 4) using lens (150, 2)
+...minimal number of points in hypercube to do clustering: 1
+...create 219 nodes.
+...calculate projection coordinates of nodes.
+...construct a TDA graph.
+...create 1133 edges.
+Finish TDA mapping
+</code></pre>
+
+<p><img alt="" src="../img/param/comp1.png" />
+Using first two components of MDS as <em>lens</em>, graph with 219 nodes ans 1133 edges will be generated.</p>
+<p>What if we choose first three components of MDS?</p>
+<pre><code class="python3">from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn import datasets
+from sklearn.cluster import DBSCAN
+from tmap.tda import mapper, filter
+from tmap.tda.cover import Cover
+from tmap.tda.plot import show
+
+iris = datasets.load_iris()
+X = iris.data
+y = iris.target
+
+# Step1. initiate a Mapper
+tm = mapper.Mapper(verbose=1)
+
+# Step2. Projection
+lens = [filter.MDS(components=[0, 1,2],random_state=100)]
+projected_X = tm.filter(X, lens=lens)
+
+# Step3. Covering, clustering &amp; mapping
+clusterer = DBSCAN(eps=0.75, min_samples=1)
+cover = Cover(projected_data=MinMaxScaler().fit_transform(projected_X), resolution=20, overlap=0.75)
+graph = tm.map(data=StandardScaler().fit_transform(X), cover=cover, clusterer=clusterer)
+
+show(data=X,graph=graph, color='b', fig_size=(10, 10), node_size=15, mode='spring', strength=0.17)
+</code></pre>
+
+<pre><code>Filtering by MDS.
+...calculate distance matrix using the euclidean metric.
+Finish filtering of points cloud data.
+Mapping on data (150, 4) using lens (150, 3)
+...minimal number of points in hypercube to do clustering: 1
+...create 921 nodes.
+...calculate projection coordinates of nodes.
+...construct a TDA graph.
+...create 13279 edges.
+Finish TDA mapping
+</code></pre>
+
+<p><img alt="" src="../img/param/comp2.png" /></p>
+<p>We could get a graph with 921 nodes and 13279 edges. Increasing components would make the graph become bigger and redundant. If we visualize these two graphs, we could see that the general topological structure is similar. The more the number of <code>components</code> you provide, the more complicated graph will be generated because of the dimensional problems. We recommend the default parameter <code>components=[0,1]</code> in most situations.</p>
+<h2 id="selecting-resolution-and-overlap-in-cover">Selecting <code>resolution</code> and <code>overlap</code> in <code>Cover</code></h2>
+<p>A further parameter that affects the resulting is about the <code>Cover</code> which is a sifter for any given filter. <code>resolution</code> decides how many intervals you need to extract from the original point cloud based on the <code>filter</code> in each axis. <code>overlap</code> influences how much space between each interval need to be overlapped.</p>
+<p>For <code>resolution</code>, the number of hypercube equals to <code>resolution ** n_components</code>. Enlarging the parameter will highly increase the time of calculation but improve the precision of the graph. Theoretically, higher precision is better for retrieving more detail in the graph. But blindly enlarging <code>resolution</code> could get a catastrophe that the number of nodes is much more than the number of samples and no connections will emerge between any of nodes.</p>
+<p><img alt="" src="../img/param/resolution.png" /></p>
+<p>If we enlarge 10 times of the <code>resolution</code>  and leave the <code>overlap</code> unchanged will cause the situation above. High <code>resolution</code> for a small data set will cause each bin/hypercube has too few samples before clustering and no samples are located inside the overlap region. The resulting graph will become a network of discrete islands.</p>
+<p>The smaller the <code>resolution</code> of cover, the less the graph could describe original points cloud. A suitable <code>resolution</code> could highly reduce the time and effort.</p>
+<p>For <code>overlap</code>, it majority influences the edges between each node. The larger the <code>overlap</code> you provide, the more edges will emerge until reaching limitation. But too low <code>overlap</code> will lose some detail of origin data.</p>
+<p><img alt="" src="../img/param/resolution2.png" /></p>
+<p>As we see above, <code>resolution</code> is an empirical param which is depended on the size of your data set. It should be carefully adjusted to depict the data set properly. The larger the <code>overlap</code> you provide, the more structure it will capture. But for visualization and calculation, we should choose a suitable value.</p>
+<p>Apart from the general structure of the graph, these parameters also influence most <strong>cover ratio</strong> which is discussed below.</p>
+<h2 id="selecting-eps-and-min_samples-in-dbscan">Selecting <code>eps</code> and <code>min_samples</code> in DBSCAN</h2>
+<p>In tmap, default cluster called DBSCAN which requires 2 parameters - <code>eps</code>, which restrict maximum distance between two samples for them to be considered as in the same cluster; and <code>min_samples</code>, which specifies how many neighbors a point should have to be included into a cluster. However, you may not know these values in advance.</p>
+<p>Here we implemented a function called <code>utils.optimize_dbscan_eps</code> to easily adjust <code>eps</code>.</p>
+<p>For better performances, we should enlarge the <code>eps</code> to cover most of the pairs. To achieve this, the shortest distance from each point to its nearest neighbor will be considered together. Collecting all distance could build a distribution and using a <code>threshold</code> as a <strong>percentile</strong> to cut how many pairwise distance you want to cover. After passing a threshold to <code>optimize_dbscan_eps</code>, you could get a suitable <code>eps</code> for DBSCAN algorithm.</p>
+<p>After we have chosen the value for <code>eps</code> , we may wonder how many points lie within each point's epsilon-neighborhood.</p>
+<p>For extracting the topological properties as much as possible, we should still consider the distribution construct by the number of neighbor of each point. But not like the <code>eps</code> optimization function, we have not implemented this function yet. It may be implemented in the future.</p>
+<h2 id="optimization-of-cover-ratio">Optimization of <em>cover ratio</em></h2>
+<p><em>cover ratio</em> is a variant for measuring how many samples are retaining or missing during the transform process from data to the graph.</p>
+<p>During the process, samples placed in a hyper cube without being clustered into any nodes will be discarded. Usually, it is taking as outlier or noise found in data.</p>
+<p>If we don't consider <em>cover ratio</em> in tmap result, it could get a perfect result like overfitting when we drop too much samples. So <em>cover ratio</em> need to be considered</p>
+<h3 id="relationship-between-cover-ratio-with-other-parameters">relationship between <em>cover ratio</em> with other parameters</h3>
+<p>Given different parameters to FGFP data in example would generate under figure.
+<img alt="" src="../img/cover_ratio/fig1.png" /></p>
+<p>Apparently, different parameters own different relationship with <em>cover ratio</em> and it is monotonous in given range.</p>
+<table>
+<thead>
+<tr>
+<th>paramerters</th>
+<th>relationship</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>eps threshold</td>
+<td>monotonous increasing</td>
+</tr>
+<tr>
+<td>overlap</td>
+<td>monotonous increasing</td>
+</tr>
+<tr>
+<td>resolution</td>
+<td>monotonous decreasing</td>
+</tr>
+<tr>
+<td>min samples</td>
+<td>monotonous decreasing</td>
+</tr>
+</tbody>
+</table>
+<h2 id="summarize">Summarize</h2>
+<p><em>cover ratio</em> is a variant which will be impacted by every parameters and so it is hard to tell what influence it will make instead of other parameters. In general, it may cover at least 80% samples like the explained proportion of PCA.</p>
+<p>In the case of <em>cover ratio</em> of 80%, resolution may reach <code>sqrt(n_samples*2)</code> as far as possible. Other parameters may be chosen depending on different circumstances. Note that there are not best parameters in tmap because different features may present different topological shape in high dimensional space. Using different angle of view and resulting a weird graph doesn't mean that it is a wrong graph. How to benchmark the graph properly also is open to exploration and implement in the future.</p>
+              
+            </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../vis/" class="btn btn-neutral float-right" title="Visulization">Next <span class="icon icon-circle-arrow-right"></span></a>
+      
+      
+        <a href="../basic/" class="btn btn-neutral" title="Basic Usage"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="http://www.mkdocs.org">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+      
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" style="cursor: pointer">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+          <a href="https://github.com/444thLiao/tmap/" class="fa fa-github" style="float: left; color: #fcfcfc"> GitHub</a>
+      
+      
+        <span><a href="../basic/" style="color: #fcfcfc;">&laquo; Previous</a></span>
+      
+      
+        <span style="margin-left: 15px"><a href="../vis/" style="color: #fcfcfc">Next &raquo;</a></span>
+      
+    </span>
+</div>
+    <script>var base_url = '..';</script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/require.js"></script>
+      <script src="../search/search.js"></script>
+
+</body>
+</html>
