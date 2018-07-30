@@ -1,6 +1,8 @@
 # pycharm files and cache
 .idea/
 .~*#
+*_doc/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
