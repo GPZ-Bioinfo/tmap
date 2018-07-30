@@ -1,3 +1,0 @@
-## Hyper cube
-
-## Undirected graph
