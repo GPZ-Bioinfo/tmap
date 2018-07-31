@@ -120,11 +120,10 @@ class Mapper(object):
         if self.verbose >= 1:
             print("...construct a TDA graph.")
 
-        adj_matrix = np.empty((len(nodes), len(nodes)))
-        # set the NaN value for filtering edges with pandas stack function
-        adj_matrix[:] = np.nan
+
         node_ids = nodes.keys()
-        adj_matrix = pd.DataFrame(adj_matrix, index=node_ids, columns=node_ids)
+        # set the NaN value for filtering edges with pandas stack function
+        adj_matrix = pd.DataFrame(data=np.nan, index=node_ids, columns=node_ids)
         # todo: this edges making step to be improved? using some native numpy?
         for k1, k2 in itertools.combinations(node_ids, 2):
             if np.any(nodes[k1] & nodes[k2]):
@@ -141,6 +140,7 @@ class Mapper(object):
         graph["nodes"] = nodes
         graph["edges"] = edges
         graph["samples"] = data_idx
+        graph["sample_names"] = list(data.index)
         # ordered "node_keys", mapped with "node_positions" and "node_size" (lists)
         graph["node_keys"] = node_keys
         graph["node_positions"] = node_positions
