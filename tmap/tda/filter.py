@@ -110,10 +110,10 @@ class PCA(Filters):
         components: The axis of projection. If you use components 0 and 1, this is [0, 1].
     """
 
-    def __init__(self, components=[0, 1]):
+    def __init__(self, components=[0, 1],random_state=None):
         # PCA only accept raw data and calculate euclidean distance "internally"
         super(PCA, self).__init__(components=components, metric=None)
-        self.pca = decomposition.PCA(n_components=max(self.components) + 1)
+        self.pca = decomposition.PCA(n_components=max(self.components) + 1,random_state=random_state)
 
     def fit_transform(self, data):
         """
