@@ -27,7 +27,7 @@ projected_X = tm.filter(dm, lens=lens)
 # Step4. Covering, clustering & mapping
 eps = optimize_dbscan_eps(X, threshold=95)
 clusterer = DBSCAN(eps=eps, min_samples=3)
-cover = Cover(projected_data=projected_X, resolution=50, overlap=0.75)
+cover = Cover(projected_data=MinMaxScaler().fit_transform(projected_X), resolution=50, overlap=0.75)
 graph = tm.map(data=X, cover=cover, clusterer=clusterer)
 print('Graph covers %.2f percentage of samples.' % cover_ratio(graph,X))
 

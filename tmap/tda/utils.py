@@ -12,9 +12,10 @@ def optimize_dbscan_eps(data, threshold=90):
     eps = np.percentile(dist[:, 1], threshold)
     return eps
 
-def construct_node_data(graph,data,feature):
+def construct_node_data(graph,data):
     nodes = graph['nodes']
-    node_data = {k: data.iloc[v, data.columns.get_loc(feature)].mean() for k, v in nodes.items()}
+    node_data = {k: data.iloc[v, :].mean(axis=0) for k, v in nodes.items()}
+    node_data = pd.DataFrame.from_dict(node_data, orient='index')
     return node_data
 
 def cover_ratio(graph,data):
@@ -22,22 +23,22 @@ def cover_ratio(graph,data):
     all_samples_in_nodes = [_ for vals in nodes.values() for _ in vals]
     n_all_sampels = data.shape[0]
     n_in_nodes = len(set(all_samples_in_nodes))
-    return n_in_nodes/float(n_all_sampels) *100
+    return n_in_nodes/float(n_all_sampels) * 100
 
-def safe_scores_IO(safe_scores,filepath=None,mode='w'):
+def safe_scores_IO(arg,output_path=None,mode='w'):
     if mode == 'w':
-        if not isinstance(safe_scores,pd.DataFrame):
-            safe_scores = pd.DataFrame.from_dict(safe_scores,orient='index')
+        if not isinstance(arg,pd.DataFrame):
+            safe_scores = pd.DataFrame.from_dict(arg,orient='index')
             safe_scores = safe_scores.T
         else:
-            safe_scores = safe_scores
-        safe_scores.to_csv(filepath,index=True)
+            safe_scores = arg
+        safe_scores.to_csv(output_path,index=True)
     elif mode == 'rd':
-        safe_scores = pd.read_csv(safe_scores,index_col=0)
+        safe_scores = pd.read_csv(arg,index_col=0)
         safe_scores = safe_scores.to_dict()
         return safe_scores
     elif mode == 'r':
-        safe_scores = pd.read_csv(safe_scores,index_col=0)
+        safe_scores = pd.read_csv(arg,index_col=0)
         return safe_scores
 
 def output_graph(graph,filepath,sep='\t'):

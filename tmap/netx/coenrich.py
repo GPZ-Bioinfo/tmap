@@ -42,7 +42,7 @@ from tqdm import tqdm
 #     return graph_coenrich
 
 
-def coenrich_v2(graph, safe_scores):
+def coenrich(graph, safe_scores):
 
     nodes = graph['nodes']
     overall_coenrich = {}
