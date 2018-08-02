@@ -14,7 +14,7 @@ y = iris.target
 tm = mapper.Mapper(verbose=1)
 
 # Step2. Projection
-lens = [filter.MDS(components=[0, 1])]
+lens = [filter.MDS(components=[0, 1],random_state=100)]
 projected_X = tm.filter(X, lens=lens)
 
 # Step3. Covering, clustering & mapping

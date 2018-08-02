@@ -131,7 +131,8 @@ def SAFE_batch(graph, meta_data, n_iter=1000, threshold=0.5):
     neighborhoods = nodes_neighborhood(all_pairs_dist, graph, threshold=threshold)
     nodes = graph['nodes']
     all_safe_scores = {}
-
+    if "columns" not in dir(meta_data):
+        meta_data = pd.DataFrame(meta_data)
     for feature in tqdm(meta_data.columns):
         node_data = {k: meta_data.iloc[v, meta_data.columns.get_loc(feature)].mean() for k, v in nodes.items()}
         safe_scores = SAFE(graph, node_data, n_iter=n_iter, threshold=threshold,all_dist=all_pairs_dist,neighborhoods=neighborhoods)

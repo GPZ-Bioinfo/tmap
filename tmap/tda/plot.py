@@ -40,6 +40,7 @@ class Color(object):
         if target_by not in ["sample", "node"]:
             raise ValueError("target values must be by 'sample' or 'node'")
         # target values should be numbers, check and encode categorical labels
+
         if ((type(target[0][0]) != int)
                 and (type(target[0][0]) != float)
                 and (not isinstance(target[0][0],np.number))
