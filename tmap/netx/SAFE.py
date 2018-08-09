@@ -121,6 +121,7 @@ def SAFE_batch(graph, meta_data, n_iter=1000, threshold=0.5):
     """
     map sample meta-data to node associated values (using means),
     and perform SAFE batch analysis for multiple features
+
     :param graph:
     :param meta_data:
     :param n_iter:

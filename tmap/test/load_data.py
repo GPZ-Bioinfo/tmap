@@ -25,6 +25,23 @@ def FGFP_metadata_ready():
     metadata = pd.read_csv(os.path.join(os.path.dirname(base_path), "test_data", 'FGFP_metadata_ready.tsv'),
                            sep='\t', index_col=0, header=0)
     return metadata
+
+def Daily_genus_profile(type):
+    if type.lower() == "stool":
+        X = pd.read_csv(os.path.join(os.path.dirname(base_path), "test_data", 'Daily_stool_genus.csv'),
+                               sep=',', index_col=0, header=0)
+        X = X.div(X.sum(1), axis=0)
+        return X
+    if type.lower() == "saliva":
+        X = pd.read_csv(os.path.join(os.path.dirname(base_path), "test_data", 'Daily_saliva_genus.csv'),
+                               sep=',', index_col=0, header=0)
+        X = X.div(X.sum(1), axis=0)
+        return X
+
+def Daily_metadata_ready():
+    metadata = pd.read_csv(os.path.join(os.path.dirname(base_path), "test_data", 'Daily_metadata.csv'),
+                           sep=',', index_col=0, header=0)
+    return metadata
 #
 # def FGFP_metadata_process():
 #     metadata = pd.read_csv(os.path.join(os.path.dirname(base_path), "test_data", 'FGFP_metadata.tsv'),
