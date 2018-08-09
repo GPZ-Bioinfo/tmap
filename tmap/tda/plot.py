@@ -178,7 +178,7 @@ def show(data, graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2,
         if color.dtype == "categorical":
             for label in set([it[0] for it in color.labels]):
                 if color.label_encoder:
-                    label_color = legend_lookup[color.label_encoder.fit_transform(label)]
+                    label_color = legend_lookup[color.label_encoder.transform([label])[0]]
                 else:
                     label_color = legend_lookup[label]
                 ax.plot([], [], 'o', color=label_color, label=label, markersize=10)

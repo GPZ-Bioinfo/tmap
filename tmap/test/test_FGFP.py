@@ -1,5 +1,4 @@
 from __future__ import print_function
-import os
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.cluster import DBSCAN
 from tmap.tda import mapper, filter
@@ -9,7 +8,7 @@ from tmap.tda.metric import Metric
 from tmap.tda.utils import optimize_dbscan_eps,cover_ratio
 from tmap.netx.SAFE import SAFE_batch, get_SAFE_summary
 from tmap.test import load_data
-
+import os
 
 # load taxa abundance data, sample metadata and precomputed distance matrix
 X = load_data.FGFP_genus_profile()
@@ -46,11 +45,11 @@ target_safe_score = safe_scores[target_feature]
 
 # colors by samples (target values in a list)
 color = Color(target=X.loc[:, target_feature], dtype="numerical", target_by="sample")
-show(data=X, graph=graph, color=color, fig_size=(10, 10), node_size=15, mode='spring', strength=0.03)
+show(data=X, graph=graph, color=color, fig_size=(10, 10), node_size=15, mode='spring', strength=0.08)
 
 # colors by nodes (target values in a dictionary)
 color = Color(target=target_safe_score, dtype="numerical", target_by="node")
-show(data=X, graph=graph, color=color, fig_size=(10, 10), node_size=15, mode='spring', strength=0.03)
+show(data=X, graph=graph, color=color, fig_size=(10, 10), node_size=15, mode='spring', strength=0.08)
 
 safe_summary = get_SAFE_summary(graph=graph, meta_data=X, safe_scores=safe_scores,
                                 n_iter_value=n_iter, p_value=0.01)
