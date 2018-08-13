@@ -73,7 +73,7 @@ def SAFE(graph, node_data, n_iter=1000, threshold=0.5,all_dist = None,neighborho
     :param node_data: node associated values (a dictionary)
     :param n_iter: number of permutations
     :param threshold: Float in range of [0,100]. The threshold is used to cut path distance with percentiles
-    :return: return dict with keys of center nodes, values are normalized and multi-test corrected p values.
+    :return: return dict with keys of nodes ID, values are normalized and multi-test corrected p values.
     """
     if all_dist is None:
         all_pairs_dist = nodes_pairwise_dist(graph)
@@ -119,14 +119,16 @@ def SAFE(graph, node_data, n_iter=1000, threshold=0.5,all_dist = None,neighborho
 
 def SAFE_batch(graph, meta_data, n_iter=1000, threshold=0.5):
     """
-    map sample meta-data to node associated values (using means),
+    Map sample meta-data to node associated values (using means),
     and perform SAFE batch analysis for multiple features
 
-    :param graph:
-    :param meta_data:
-    :param n_iter:
-    :param threshold:
-    :return:
+    For more information, you should see :doc:`how2work`
+
+    :param dict graph:
+    :param np.ndarry/pd.DataFrame meta_data:
+    :param int n_iter: Permutation times. For some features with skewness values, it should be higher in order to stabilize the resulting SAFE score.
+    :param float threshold: Float in range of [0,100]. The threshold is used to cut path distance with percentiles
+    :return: return dict ``{feature: {node_ID:p-values(fdr)} }`` .
     """
     all_pairs_dist = nodes_pairwise_dist(graph)
     neighborhoods = nodes_neighborhood(all_pairs_dist, graph, threshold=threshold)

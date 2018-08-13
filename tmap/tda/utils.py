@@ -43,10 +43,13 @@ def safe_scores_IO(arg,output_path=None,mode='w'):
 
 def output_graph(graph,filepath,sep='\t'):
     """
-    ouput graph as a file with sep [default=TAB]
-    :param graph: Graph output from tda.mapper.map
-    :param filepath:
-    :param sep:
+    Export graph as a file with sep. The output file should be used with `Cytoscape <http://cytoscape.org/>`_ .
+
+    It should be noticed that it will overwrite the file you provided.
+
+    :param dict graph: Graph output from tda.mapper.map
+    :param str filepath:
+    :param str sep:
     """
     edges = graph['edges']
     with open(os.path.realpath(filepath),'w') as csvfile:
@@ -57,14 +60,16 @@ def output_graph(graph,filepath,sep='\t'):
 
 def output_Node_data(graph,filepath,data,features = None,sep='\t',target_by='sample'):
     """
-    output Node data with provided data.
-    :param graph:
-    :param filepath:
-    :param data: pandas.Dataframe or np.ndarray with [n_samples,n_features] or [n_nodes,n_features]
-    :param features: Array of features name
-    :param sep:
-    :param target_by: target type of "sample" or "node"
-    :return:
+    Export Node data with provided filepath. The output file should be used with `Cytoscape <http://cytoscape.org/>`_ .
+
+    It should be noticed that it will overwrite the file you provided.
+
+    :param dict graph:
+    :param str filepath:
+    :param np.ndarray/pandas.Dataframe data: with shape [n_samples,n_features] or [n_nodes,n_features]
+    :param list features: It could be None and it will use count number as feature names.
+    :param str sep:
+    :param str target_by: target type of "sample" or "node"
     """
     if target_by not in ['sample','node']:
         exit("target_by should is one of ['sample','node']")
@@ -93,17 +98,20 @@ def output_Node_data(graph,filepath,data,features = None,sep='\t',target_by='sam
 
 def output_Edge_data(graph,filepath,sep='\t'):
     """
-    ouput edge data with sep [default=TAB]
-    Mainly for netx.coenrich output
-    :param graph: graph output by netx.co-enrich
-    :param filepath:
-    :param sep:
-    :return:
+    Export edge data with sep [default=TAB]
+
+    Mainly for the result of tmap.tda.netx.coenrich
+
+    The output file should be used with `Cytoscape <http://cytoscape.org/>`_ .
+
+    :param dict graph: graph output by netx.coenrich
+    :param str filepath:
+    :param str sep:
     """
     if isinstance(graph,dict):
-        if "edge_weights" in graph.keys() and "edges" in graph.keys():
-            edges = graph["edges"]
-            edge_weights = graph["edge_weights"]
+        if "association_coeffient" in graph.keys() and "associated_pairs" in graph.keys():
+            edges = graph["associated_pairs"]
+            edge_weights = graph["association_coeffient"]
             with open(os.path.realpath(filepath), 'w') as csvfile:
                 spamwriter = csv.writer(csvfile, delimiter=sep)
                 spamwriter.writerow(["Edge name","coenrich_score"])
@@ -111,6 +119,6 @@ def output_Edge_data(graph,filepath,sep='\t'):
                     spamwriter.writerow(["%s (interacts with) %s" % (node1,node2),
                                          edge_weights[(node1,node2)]])
         else:
-            print("Missing key 'edge_weights' or 'edges' in graph")
+            print("Missing key 'association_coeffient' or 'associated_pairs' in graph")
     else:
         print("graph should be a dictionary")

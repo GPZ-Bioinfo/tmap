@@ -12,12 +12,19 @@ _METRIC_ALLOWED = ["braycurtis", "canberra", "chebyshev", "cityblock", "correlat
 
 class Metric(object):
     """
-    metric + data -> distance matrix
+    ``metric + data -> distance matrix``
+
     Define a distance metric and transform data points into a distance matrix.
-    Params:
-        metric：specified a distance metric.
-            For example, 'cosine', 'euclidean', 'hamming', 'minkowski',
-            or 'precomputed' for precomputed distance matrix.
+
+    :param str metric: `metric` specified a distance metric.
+        For example:
+
+        * cosine
+        * euclidean
+        * hamming
+        * minkowski
+        * precomputed:  for precomputed distance matrix.
+
     """
 
     def __init__(self, metric="euclidean"):
@@ -28,8 +35,8 @@ class Metric(object):
     def fit_transform(self, data):
         """
         Create and return a distance matrix based on the specified metric.
-        Params:
-            data：raw data or precomputed distance matrix.
+
+        :param np.ndarray/pd.DataFrame data: `data`: raw data or precomputed distance matrix.
         """
 
         if data is None:

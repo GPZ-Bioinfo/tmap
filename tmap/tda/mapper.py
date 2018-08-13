@@ -10,8 +10,9 @@ class Mapper(object):
     implement the TDA mapper framework for microbiome analysis
     """
     def __init__(self, verbose=1):
-        self.verbose = verbose
         #: if verbose greater than 1, it will output detail info.
+        self.verbose = verbose
+
         # self.lens = None
         # self.clusterer = None
         # self.cover = None
@@ -19,6 +20,9 @@ class Mapper(object):
 
     def filter(self, data, lens=None):
         """
+        :param numpy.ndarray/pandas.DataFrame data:
+        :param list lens: List of instance of class which is inherited from ``tmap.tda.filter.Filter``.
+
         Input data may need to imputed for remove np.inf or np.nan, or it will raise error in fit step.
         It is recommended to scale original data with MinMaxScalar to check the completeness of data.
 
@@ -63,9 +67,10 @@ class Mapper(object):
         """
         map the points cloud with the projection data, and return a TDA graph.
 
-        1. Providing data must be one of *np.ndarray* or *pandas.DataFrame*. And the number of rows must equal to the data you passed to ``Cover``.
-        2. Cover must be an instantiation of ``tmap.tda.cover.Cover``
-        3. In generally, cluster is an instance of sklearn.cluster. Default is ``DBSCAN(eps=0.5, min_samples=1)``.
+        :param numpy.ndarray/pandas.DataFrame data: The row number of data must equal to the data you passed to ``Cover``
+        :param tmap.tda.cover.Cover Cover:
+        :param sklearn.cluster clusterer:
+        :return: A dictionary with multiple keys which described below.
 
         During the process, it will output progress information depending on ``verbose``
 
@@ -73,16 +78,17 @@ class Mapper(object):
 
         The resulting graph is a dictionary containing multiple keys and corresponding values. For better understanding the meaning of all keys and values. Here is the descriptions of each key.
 
-        1. nodes: Another dictionary for storge the mapping relationships between *nodes* and *samples*. Key is the name of nodes. Values is a list of corresponding index of samples.
-        2. edges: A list of 2-tuples for indicating edges between nodes.
-        3. adj_matrix: A square ``DataFrame`` constructed by nodes ID. The elements of the matrix indicate whether pairs of vertices are adjacent or not in the graph. (Unweighted)
-        4. sample_names: A list of samples names which assign from the index of providing ``data``.
-        5. node_keys: A list of ordered nodes ID.
-        6. node_positions:
-        7. node_sizes:
-        8. params:
 
+                1. nodes: Another dictionary for storge the mapping relationships between *nodes* and *samples*. Key is the name of nodes. Values is a list of corresponding index of samples.
+                2. edges: A list of 2-tuples for indicating edges between nodes.
+                3. adj_matrix: A square ``DataFrame`` constructed by nodes ID. The elements of the matrix indicate whether pairs of vertices are adjacent or not in the graph. (Unweighted)
+                4. sample_names: A list of samples names which assign from the index of providing ``data``. If 'index' not in ``dir(data)``, it will replace with a range of n_row of data.
+                5. node_keys: A list of ordered nodes ID.
+                6. node_positions: A dictionary with node as key and position of node as value. Depending on the shape of the cover.data, it will simply calculate the average values of all samples within a node in cover.data and assign it as the position info of the node.
+                7. node_sizes: A dictionary with node as key and number of samples within the node as value.
+                8. params: A dictionary for storing parameters of ``cover`` and ``cluster``
 
+        In future, structured class of graph will be implemented and taken as the result of ``Mapper``.
         """
         # nodes, edges and graph of the TDA graph
         graph = {}
@@ -145,7 +151,6 @@ class Mapper(object):
         # construct the TDA graph from overlaps (common points) between nodes
         if self.verbose >= 1:
             print("...construct a TDA graph.")
-
 
         node_ids = nodes.keys()
         # set the NaN value for filtering edges with pandas stack function

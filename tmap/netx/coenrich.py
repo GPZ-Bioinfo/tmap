@@ -7,10 +7,18 @@ def coenrich(graph, safe_scores):
     """
     Giving graph and safe_scores calculated by ``SAFE_batch``
 
+    Currently, we using itertools.combinations for iterating all possibles combinations of each features and perform pearson test with corresponding SAFE scores. Then, it will perform multiple test correction with fdr_correction.
 
-    :param graph:
-    :param safe_scores:
-    :return:
+    Finally, it will output a dict with different keys.
+
+    * associated_pairs: tuple of associated features.
+    * association_coeffient: coeffient produced by pearson test
+    * association_p_values: p-values produced by pearson test
+    * association_p_values(fdr): p-values after multiple test correction
+
+    SAFE score is a metric trying to capture the variation of corresponding feature and so it will result much 0 values for among the network.
+
+    For pearson test, two array of values with lots of zeros will result some pseudo association. It should be careful it there are negative association with two features.
     """
     nodes = graph['nodes']
     overall_coenrich = {}
@@ -28,9 +36,9 @@ def coenrich(graph, safe_scores):
             overall_coenrich[(fea1, fea2)] = p_test
 
     graph_coenrich = {}
-    graph_coenrich['edges'] = [k for k, v in overall_coenrich.items()]
-    graph_coenrich['edge_coeffient'] = dict([(k, v[0]) for k, v in overall_coenrich.items()])
-    graph_coenrich['edge_weights'] = dict([(k, v[1]) for k, v in overall_coenrich.items()])
-    graph_coenrich['edge_adj_weights(fdr)'] = dict([(k, v) for k, v in zip(overall_coenrich.keys(),
+    graph_coenrich['associated_pairs'] = [k for k, v in overall_coenrich.items()]
+    graph_coenrich['association_coeffient'] = dict([(k, v[0]) for k, v in overall_coenrich.items()])
+    graph_coenrich['association_p_values'] = dict([(k, v[1]) for k, v in overall_coenrich.items()])
+    graph_coenrich['association_p_values(fdr)'] = dict([(k, v) for k, v in zip(overall_coenrich.keys(),
                                                                            fdrcorrection([_[1] for _ in overall_coenrich.values()])[1])])
     return graph_coenrich

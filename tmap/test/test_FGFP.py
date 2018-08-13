@@ -12,7 +12,7 @@ import os
 
 # load taxa abundance data, sample metadata and precomputed distance matrix
 X = load_data.FGFP_genus_profile()
-metadata = load_data.FGFP_metadata()
+metadata = load_data.FGFP_metadata_ready()
 dm = load_data.FGFP_BC_dist()
 
 # TDA Step1. initiate a Mapper
