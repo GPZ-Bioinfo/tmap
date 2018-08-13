@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy as np
 import itertools
 
@@ -5,6 +6,19 @@ import itertools
 class Cover(object):
     """
     Covering the projection data
+
+    :param numpy.ndarray/pandas.DataFrame projected_data:
+
+            Normally, `projected_data` should be the data transformed by *MDS* or *t-SNE* or *PCA*. It decides the way of partition for the original point cloud.
+
+    :param integer resolution:
+
+            It decides the number of partition of each axis at ``projected_data``
+
+    :param float overlap:
+
+            `overlap` must greater than 0. It decides the level of the expansion of each partition. If `overlap` equals to 0.5, each partition (include the first and the last) will expand 0.5 times of orginal.
+
     """
     def __init__(self, projected_data, resolution=10, overlap=0.5):
         """
@@ -14,6 +28,9 @@ class Cover(object):
         """
         self.resolution = resolution
         self.overlap = overlap
+        if overlap <= 0:
+            print("overlap must greater than 0")
+            exit(1)
         self.n_points, self.n_dimensions = projected_data.shape
         self.data = projected_data
 
@@ -24,7 +41,12 @@ class Cover(object):
 
     @property
     def hypercubes(self):
-        # generate hypercubes (or covering) using a generator function
+        """
+        Generate hypercubes (covering) using a generator function
+
+        :return: It returns a mask for the projected_data. Each row is a list of boolean for indicating which samples are within the current cube. The row number of hypercubes represents the number of partition.
+        :rtype: numpy.ndarray
+        """
         return self._get_hypercubes()
 
     def _get_hypercubes(self,output_bounds=False):
