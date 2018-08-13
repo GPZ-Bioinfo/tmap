@@ -2,9 +2,9 @@
 
 For large scale and integrative microbiome research, it is expected to apply advanced data mining techniques in microbiome data analysis.
 
-Topological data analysis (TDA) provides a promising technique for analyzing large scale complex data. The most popular Mapper algorithm is effective in distilling data-shape from high dimensional data, and provides a compressive network representation for pattern discovery and statistical analysis.
+Topological data analysis (TDA) provides a promising technique for analyzing large scale complex data. The most popular *Mapper* algorithm is effective in distilling data-shape from high dimensional data, and provides a compressive network representation for pattern discovery and statistical analysis.
 
-tmap is a topological data analysis framework implementing the TDA Mapper algorithm for population-scale microbiome data analysis. We developed tmap to enable easy adoption of TDA in microbiome data analysis pipeline, providing network-based statistical methods for enterotype analysis, driver species identification, and microbiome-wide association analysis of host meta-data.
+***tmap*** is a topological data analysis framework implementing the TDA *Mapper* algorithm for population-scale microbiome data analysis. We developed ***tmap*** to enable easy adoption of TDA in microbiome data analysis pipeline, providing network-based statistical methods for enterotype analysis, driver species identification, and microbiome-wide association analysis of host meta-data.
 
 # How to Install *tmap*?
 
