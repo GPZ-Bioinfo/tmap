@@ -35,3 +35,5 @@ Or follow the [Microbiome examples](https://tmap.readthedocs.io/en/latest/exampl
 
 # *tmap* Publication
 
+# Contact Us
+If you have any questions or suggestions, you are welcome to contact us via email: haokui.zhou@gmail.com.
