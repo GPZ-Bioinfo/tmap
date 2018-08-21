@@ -16,6 +16,8 @@ python setup.py install
 ```
 If you encounter any error like `Import error: tkinter`, you need to run `sudo apt install python-tk` or `sudo apt install python3-tk`.
 
+***Note***: We suggest using `NetworkX 1.11` for network analysis and plotting, otherwise using a newer version will return an inconsisent generator with the error `AttributeError: 'generator' object has no attribute 'values'`.
+
 # *tmap* Documentation
 
 * [Basic Usage of tmap](https://tmap.readthedocs.io/en/latest/basic.html)
