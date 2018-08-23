@@ -9,7 +9,6 @@ import matplotlib.colors as mcolors
 import networkx as nx
 from sklearn import decomposition
 
-
 class Color(object):
     """
     map colors to target values for TDA network visualization
@@ -148,6 +147,21 @@ class Color(object):
 
         return dict(zip(node_keys, node_colors)), (node_color_idx, node_colors)
 
+    def get_sample_colors(self, cmap=None):
+        """
+        :param dict nodes: nodes from graph
+        :param cmap: not implemented yet...
+        :return: nodes colors with keys, and the color map of the target values
+        :rtype: tuple (first is a dict node_ID:node_color, second is a tuple (node_ID_index,node_color))
+        """
+        # todo: accept a customzied color map [via the 'cmap' parameter]
+        if self.target_by != "sample":
+            raise IOError
+
+        _sample_color_idx = self._rescale_target(self.target)
+        sample_colors = [self._get_hex_color(idx) for idx in _sample_color_idx]
+
+        return sample_colors
 
 def show(data, graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2, mode=None, strength=None):
     """
@@ -195,7 +209,7 @@ def show(data, graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2,
         if color.dtype == "categorical":
             for label in set([it[0] for it in color.labels]):
                 if color.label_encoder:
-                    label_color = legend_lookup[color.label_encoder.transform([label])[0]]
+                    label_color = legend_lookup.get(color.label_encoder.transform([label])[0],None)
                 else:
                     label_color = legend_lookup[label]
                 ax.plot([], [], 'o', color=label_color, label=label, markersize=10)
@@ -249,6 +263,7 @@ def show(data, graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2,
                          width=edge_width,
                          edge_color=[color_map[edge[0]] for edge in graph["edges"]],
                          with_labels=False, label="0", ax=ax)
+
     else:
         fig = plt.figure(figsize=fig_size)
         ax = fig.add_subplot(111)
@@ -262,3 +277,4 @@ def show(data, graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2,
 
     plt.axis("off")
     plt.show()
+

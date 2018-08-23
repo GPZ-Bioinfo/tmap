@@ -18,10 +18,12 @@ def nodes_pairwise_dist(graph):
 
 def construct_weighted_node_data(graph,data):
     nodes = graph['nodes']
-    node_data = {k: data.iloc[v, :].sum() for k, v in nodes.items()}
+    if "iloc" in dir(data):
+        node_data = {k: data.iloc[v, :].mean() for k, v in nodes.items()}
+    else:
+        node_data = {k: np.mean(data[v, :],axis=0) for k, v in nodes.items()}
     node_data = pd.DataFrame.from_dict(node_data,orient='index')
     return node_data
-
 
 def nodes_neighborhood(all_pairs_dist,graph, threshold=0.5):
     """

@@ -24,7 +24,7 @@ lens = [filter.MDS(components=[0, 1], metric=metric,random_state=100)]
 projected_X = tm.filter(dm, lens=lens)
 
 # Step4. Covering, clustering & mapping
-eps = optimize_dbscan_eps(X, threshold=95)
+eps = optimize_dbscan_eps(X, threshold=95,dm=dm)
 clusterer = DBSCAN(eps=eps, min_samples=3)
 cover = Cover(projected_data=MinMaxScaler().fit_transform(projected_X), resolution=50, overlap=0.75)
 graph = tm.map(data=X, cover=cover, clusterer=clusterer)

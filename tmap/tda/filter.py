@@ -2,7 +2,7 @@
 import numpy as np
 from sklearn import decomposition, manifold
 from tmap.tda.metric import Metric
-
+import umap
 
 _METRIC_BUILT_IN = ["braycurtis", "canberra", "chebyshev", "cityblock", "correlation", "cosine", "dice", "euclidean",
                     "hamming", "jaccard", "kulsinski", "mahalanobis", "matching", "minkowski", "rogerstanimoto",
@@ -110,10 +110,10 @@ class PCA(Filters):
         components: The axis of projection. If you use components 0 and 1, this is [0, 1].
     """
 
-    def __init__(self, components=[0, 1],random_state=None):
+    def __init__(self, components=[0, 1],random_state=None, **kwds):
         # PCA only accept raw data and calculate euclidean distance "internally"
         super(PCA, self).__init__(components=components, metric=None)
-        self.pca = decomposition.PCA(n_components=max(self.components) + 1,random_state=random_state)
+        self.pca = decomposition.PCA(n_components=max(self.components) + 1,random_state=random_state, **kwds)
 
     def fit_transform(self, data):
         """
@@ -135,13 +135,13 @@ class TSNE(Filters):
         components: The axis of projection. If you use components 0 and 1, this is [0, 1].
     """
 
-    def __init__(self, components=[0, 1], metric=Metric(metric="euclidean")):
+    def __init__(self, components=[0, 1], metric=Metric(metric="euclidean"), **kwds):
         super(TSNE, self).__init__(components=components, metric=metric)
 
         if self.metric.name in _METRIC_BUILT_IN:
-            self.tsne = manifold.TSNE(n_components=max(self.components) + 1, metric=self.metric.name)
+            self.tsne = manifold.TSNE(n_components=max(self.components) + 1, metric=self.metric.name, **kwds)
         else:
-            self.tsne = manifold.TSNE(n_components=max(self.components) + 1, metric="precomputed")
+            self.tsne = manifold.TSNE(n_components=max(self.components) + 1, metric="precomputed", **kwds)
 
     def fit_transform(self, data):
         """
@@ -162,19 +162,42 @@ class MDS(Filters):
     Params:
         components: The axis of projection. If you use components 0 and 1, this is [0, 1].
     """
-    def __init__(self, components=[0, 1], metric=Metric(metric="euclidean"),random_state=None):
+    def __init__(self, components=[0, 1], metric=Metric(metric="euclidean"), **kwds):
         super(MDS, self).__init__(components=components, metric=metric)
 
         if self.metric.name in _METRIC_BUILT_IN:
-            self.mds = manifold.MDS(n_components=max(self.components) + 1,random_state=random_state,
-                                    dissimilarity=self.metric.name, n_jobs=-1)
+            self.mds = manifold.MDS(n_components=max(self.components) + 1,
+                                    dissimilarity=self.metric.name, n_jobs=-1, **kwds)
         else:
-            self.mds = manifold.MDS(n_components=max(self.components) + 1,random_state=random_state,
-                                    dissimilarity="precomputed", n_jobs=-1)
+            self.mds = manifold.MDS(n_components=max(self.components) + 1,
+                                    dissimilarity="precomputed", n_jobs=-1, **kwds)
 
     def fit_transform(self, data):
         data = self._check_data(data)
         if self.metric.name not in _METRIC_BUILT_IN:
             data = self.metric.fit_transform(data)
         projected_data = self.mds.fit_transform(data)
+        return projected_data[:, self.components]
+
+class UMAP(Filters):
+    """
+    MDS filters.
+    Params:
+        components: The axis of projection. If you use components 0 and 1, this is [0, 1].
+    """
+    def __init__(self, components=[0, 1], metric=Metric(metric="euclidean"), **kwds):
+        super(UMAP, self).__init__(components=components, metric=metric)
+
+        if self.metric.name in _METRIC_BUILT_IN:
+            self.umap = umap.UMAP(n_components=max(self.components) + 1,
+                                  metric=self.metric.name,  **kwds)
+        else:
+            self.umap = umap.UMAP(n_components=max(self.components) + 1,
+                                  metric="precomputed",  **kwds)
+
+    def fit_transform(self, data):
+        data = self._check_data(data)
+        if self.metric.name not in _METRIC_BUILT_IN:
+            data = self.metric.fit_transform(data)
+        projected_data = self.umap.fit_transform(data)
         return projected_data[:, self.components]

@@ -3,7 +3,11 @@ import numpy as np
 import pandas as pd
 import csv,os
 
-def optimize_dbscan_eps(data, threshold=90):
+def optimize_dbscan_eps(data, threshold=90,dm=None):
+    if dm is not None:
+        tmp = dm.where(dm != 0, np.inf)
+        eps = np.percentile(np.min(tmp,axis=0),threshold)
+        return eps
     # using metric='minkowski', p=2 (that is, a euclidean metric)
     tree = KDTree(data, leaf_size=30, metric='minkowski', p=2)
     # the first nearest neighbor is itself, set k=2 to get the second returned
@@ -18,12 +22,16 @@ def construct_node_data(graph,data):
     node_data = pd.DataFrame.from_dict(node_data, orient='index')
     return node_data
 
+## Access inner attribute
+
 def cover_ratio(graph,data):
     nodes = graph['nodes']
     all_samples_in_nodes = [_ for vals in nodes.values() for _ in vals]
     n_all_sampels = data.shape[0]
     n_in_nodes = len(set(all_samples_in_nodes))
     return n_in_nodes/float(n_all_sampels) * 100
+
+## Export data as file
 
 def safe_scores_IO(arg,output_path=None,mode='w'):
     if mode == 'w':
@@ -40,6 +48,7 @@ def safe_scores_IO(arg,output_path=None,mode='w'):
     elif mode == 'r':
         safe_scores = pd.read_csv(arg,index_col=0)
         return safe_scores
+
 
 def output_graph(graph,filepath,sep='\t'):
     """
