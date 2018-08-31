@@ -51,3 +51,4 @@ def SAFE2(graph, data, n_iter=1000):
     safe_scores = {k: np.log10(p_values_fdr_bh[k])/np.log10(min_p_value) for k in nodes_keys}
 
     return safe_scores
+

@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import itertools
 from sklearn import cluster
-
+from tqdm import tqdm
 
 class Mapper(object):
     """
@@ -104,13 +104,25 @@ class Mapper(object):
         min_cluster_samples = cluster_params.get("min_samples", 1)
         if self.verbose >= 1:
             print("...minimal number of points in hypercube to do clustering: %d" % (min_cluster_samples,))
-
+            # print("...iterating ")
         # generate hypercubes from the cover and perform clustering analysis
         cubes = cover.hypercubes
         data_idx = np.arange(data.shape[0])
+        data_vals = np.array(data)
         node_id = 0
-        for cube in cubes:
-            cube_data = data[cube]
+        if self.verbose >= 1:
+            _iteration = tqdm(cubes)
+        else:
+            _iteration = cubes
+        if clusterer.metric == "precomputed":
+            assert data_vals.shape[0] == data_vals.shape[1]
+
+        for cube in _iteration:
+            if clusterer.metric != "precomputed":
+                cube_data = data_vals[cube]
+            else:
+                cube_data = data_vals[cube][:, cube]
+
             cube_data_idx = data_idx[cube]
             if cube_data.shape[0] >= min_cluster_samples:
                 if (clusterer is not None) and ("fit" in dir(clusterer)):
@@ -118,13 +130,13 @@ class Mapper(object):
                     for label in np.unique(clusterer.labels_):
                         # the "-1" label is used for "un-clustered" points!!!
                         if label != -1:
-                            point_mask = np.zeros(data.shape[0], dtype=bool)
+                            point_mask = np.zeros(data_vals.shape[0], dtype=bool)
                             point_mask[cube_data_idx[clusterer.labels_ == label]] = True
                             nodes[node_id] = point_mask
                             node_id += 1
                 else:
                     # assumed to have a whole cluster of cubes!!!
-                    point_mask = np.zeros(data.shape[0], dtype=bool)
+                    point_mask = np.zeros(data_vals.shape[0], dtype=bool)
                     point_mask[cube_data_idx] = True
                     nodes[node_id] = point_mask
                     node_id += 1

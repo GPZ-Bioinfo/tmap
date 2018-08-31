@@ -1,13 +1,17 @@
 # -*- coding: utf-8 -*-
-import numpy as np
-from scipy import stats
-from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 import colorsys
-import matplotlib.pyplot as plt
+
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
 import networkx as nx
+import numpy as np
+import plotly
+import plotly.graph_objs as go
+from scipy import stats
 from sklearn import decomposition
+from sklearn.preprocessing import LabelEncoder, MinMaxScaler
+
 
 class Color(object):
     """
@@ -26,6 +30,7 @@ class Color(object):
     :param str target_by: target type of "sample" or "node"
 
     """
+
     def __init__(self, target, dtype="numerical", target_by="sample"):
         """
         :param list/np.ndarray/pd.Series target: target values for samples or nodes
@@ -55,10 +60,13 @@ class Color(object):
 
         if ((type(target[0][0]) != int)
                 and (type(target[0][0]) != float)
-                and (not isinstance(target[0][0],np.number))
+                and (not isinstance(target[0][0], np.number))
         ):
             self.label_encoder = LabelEncoder()
             self.target = self.label_encoder.fit_transform(target)
+        elif dtype == "categorical":
+            self.label_encoder = LabelEncoder()
+            self.target = self.label_encoder.fit_transform(target.astype(str))
         else:
             self.label_encoder = None
             self.target = target
@@ -109,7 +117,7 @@ class Color(object):
         if all(target_q3_max == 0.75):
             target_q3_max = np.ones(target_q3_max.shape)
         if q1 == median == q3:
-            target_q3_max = np.array([_ if _!= 0.75 else 0 for _ in target_q3_max[:,0]]).reshape(target_q3_max.shape)
+            target_q3_max = np.array([_ if _ != 0.75 else 0 for _ in target_q3_max[:, 0]]).reshape(target_q3_max.shape)
         rescaled_target[index_median_q3] = target_median_q3
         rescaled_target[index_q1_median] = target_q1_median
         rescaled_target[index_min_q1] = target_min_q1
@@ -163,6 +171,7 @@ class Color(object):
 
         return sample_colors
 
+
 def show(data, graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2, mode=None, strength=None):
     """
     Network visualization of TDA mapper
@@ -193,7 +202,7 @@ def show(data, graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2,
         if color is None:
             color = 'red'
         color_map = {node_id: color for node_id in node_keys}
-        target2colors = (np.zeros((len(node_keys), 1)),[color] * len(node_keys))
+        target2colors = (np.zeros((len(node_keys), 1)), [color] * len(node_keys))
     else:
         color_map, target2colors = color.get_colors(graph["nodes"])
     colorlist = [color_map[it] for it in node_keys]
@@ -202,17 +211,18 @@ def show(data, graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2,
     ax = fig.add_subplot(1, 1, 1)
 
     node_target_values, node_colors = target2colors
-    legend_lookup = dict(zip(node_target_values.reshape(-1,), node_colors))
+    legend_lookup = dict(zip(node_target_values.reshape(-1, ), node_colors))
 
     # add categorical legend
-    if isinstance(color,Color):
+    if isinstance(color, Color):
         if color.dtype == "categorical":
             for label in set([it[0] for it in color.labels]):
                 if color.label_encoder:
-                    label_color = legend_lookup.get(color.label_encoder.transform([label])[0],None)
+                    label_color = legend_lookup.get(color.label_encoder.transform([label])[0], None)
                 else:
-                    label_color = legend_lookup[label]
-                ax.plot([], [], 'o', color=label_color, label=label, markersize=10)
+                    label_color = legend_lookup.get(label, None)
+                if label_color is not None:
+                    ax.plot([], [], 'o', color=label_color, label=label, markersize=10)
             legend = ax.legend(numpoints=1, loc="upper right")
             legend.get_frame().set_facecolor('#bebebe')
 
@@ -278,3 +288,152 @@ def show(data, graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2,
     plt.axis("off")
     plt.show()
 
+
+def vis_progressX(graph, projected_X, filepath=None, color=None, **kwargs):
+    center_pos = graph["node_positions"]
+    ori_MDS = MinMaxScaler().fit_transform(projected_X)
+    nodes = graph["nodes"]
+    sizes = graph["node_sizes"][:,0]
+
+    if color:
+        color_map, target2colors = color.get_colors(graph["nodes"])
+    if color.target_by =="node":
+        samples_colors = "red"
+    else:
+        samples_colors = color.get_sample_colors()
+    point_tmp = []
+    center_tmp = []
+    point_colors = []
+
+    for n in nodes:
+        point_tmp.append(ori_MDS[nodes[n], :])
+        center_tmp.append(np.concatenate([center_pos[[n], :]] * len(nodes[n]), axis=0))
+        if color:
+            point_colors += list(np.repeat(color_map[n], len(nodes[n])))
+        else:
+            point_colors.append("blue")
+    point_pos = np.concatenate(point_tmp, axis=0)
+    center_pos = np.concatenate(center_tmp, axis=0)
+
+    fig = plotly.tools.make_subplots(rows=2, cols=2, specs=[[{'rowspan': 2}, {}], [None, {}]],
+                                     # subplot_titles=('Mapping process', 'Original projection', 'tmap graph')
+                                     )
+
+    fig.append_trace(go.Scatter(
+        visible=True,
+        x=ori_MDS[:, 0],
+        y=ori_MDS[:, 1],
+        marker=dict(color=samples_colors),
+        showlegend=False,
+        mode="markers"), 1, 1)
+    # to center
+    steps = 10
+    for s in range(steps + 1):
+        fig.append_trace(go.Scatter(
+            visible=False,
+            x=point_pos[:, 0] + ((center_pos - point_pos) / steps * s)[:, 0],
+            y=point_pos[:, 1] + ((center_pos - point_pos) / steps * s)[:, 1],
+            marker=dict(color=point_colors),
+            showlegend=False,
+            mode="markers"), 1, 1)
+    # to spring layout
+    center_pos = graph["node_positions"]
+    # final_pos = get_pos(graph,0.035)
+    # final_pos = np.array([final_pos[_] for _ in list(graph["nodes"].keys())])
+
+    xs = []
+    ys = []
+    for edge in graph["edges"]:
+        xs += [center_pos[edge[0], 0],
+               center_pos[edge[1], 0],
+               None]
+        ys += [center_pos[edge[0], 1],
+               center_pos[edge[1], 1],
+               None]
+    fig.append_trace(go.Scatter(
+        visible=False,
+        x=xs,
+        y=ys,
+        marker=dict(color="#8E9DA2",
+                    opacity=0.7),
+        line=dict(width=1),
+        showlegend=False,
+        mode="lines"), 1, 1)
+
+    fig.append_trace(go.Scatter(
+        visible=False,
+        x=center_pos[:, 0],
+        y=center_pos[:, 1],
+        text=[str(n)+"<Br>"+'<Br>'.join(np.array(graph.get("sample_names"))[graph["nodes"][n]]) for n in graph["nodes"]],
+        hoverinfo="text",
+        marker=dict(color=[color_map[_] for _ in range(len(nodes))],
+                    size=[sizes[_] for _ in range(len(nodes))],
+                    opacity=1),
+        showlegend=False,
+        mode="markers"), 1, 1)
+    ############################################################
+    fig.append_trace(go.Scatter(
+        x=xs,
+        y=ys,
+        marker=dict(color="#8E9DA2", ),
+        showlegend=False,
+        hoverinfo="none",
+
+        line=dict(width=1),
+        mode="lines"), 2, 2)
+    fig.append_trace(go.Scatter(
+        x=center_pos[:, 0],
+        y=center_pos[:, 1],
+        text=[str(n)+"<Br>"+'<Br>'.join(np.array(graph.get("sample_names"))[graph["nodes"][n]]) for n in graph["nodes"]],
+        hoverinfo="text",
+        marker=dict(color=[color_map[_] for _ in range(len(nodes))],
+                    size=[sizes[_] for _ in range(len(nodes))],
+                    opacity=1),
+        showlegend=False,
+        mode="markers"), 2, 2)
+    fig.append_trace(go.Scatter(
+        x=ori_MDS[:, 0],
+        y=ori_MDS[:, 1],
+        text=graph.get("sample_names"),
+        hoverinfo="text",
+        showlegend=False,
+        marker=dict(color=samples_colors),
+        mode="markers"), 1, 2)
+    ############################################################
+    steps = []
+    for i in range(14):
+        step = dict(
+            method='restyle',
+            args=['visible', [False] * 14 + [True, True, True]],
+        )
+        if i >= 12:
+            step["args"][1][-5:] = [True] * 5
+        else:
+            step['args'][1][i] = True  # Toggle i'th trace to "visible"
+        steps.append(step)
+
+    sliders = [dict(
+        active=0,
+        currentvalue={"prefix": "status: "},
+        pad={"t": 14},
+        steps=steps
+    )]
+    ############################################################
+    layout = dict(sliders=sliders,
+                  width=2000,
+                  height=1000,
+                  xaxis1={"range": [0, 1], "domain": [0, 0.5]},
+                  yaxis1={"range": [0, 1], "domain": [0, 1]},
+                  xaxis2={"range": [0, 1], "domain": [0.6, 0.9]},
+                  yaxis2={"range": [0, 1], "domain": [0.5, 1]},
+                  xaxis3={"range": [0, 1], "domain": [0.6, 0.9]},
+                  yaxis3={"range": [0, 1], "domain": [0, 0.5]},
+                  hovermode="closest"
+                  )
+    fig.layout.update(layout)
+    # fig = dict(data=fig.data, layout=layout)
+    if filepath:
+        plotly.offline.plot(fig, filename=filepath, **kwargs)
+    else:
+        plotly.offline.plot(fig, **kwargs)
+    # return fig

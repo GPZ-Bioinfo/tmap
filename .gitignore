@@ -8,6 +8,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# removes files
+FGFP_metadata.tsv
+FGFP_metadata_ready.tsv
 # C extensions
 *.so
 

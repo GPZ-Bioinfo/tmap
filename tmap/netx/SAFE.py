@@ -13,7 +13,10 @@ def nodes_pairwise_dist(graph):
     G = nx.Graph()
     G.add_nodes_from(graph['nodes'].keys())
     G.add_edges_from(graph['edges'])
+
     all_pairs_dist = nx.all_pairs_shortest_path_length(G)
+    if not isinstance(all_pairs_dist,dict):
+        all_pairs_dist = dict(all_pairs_dist)
     return all_pairs_dist
 
 def construct_weighted_node_data(graph,data):

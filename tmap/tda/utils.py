@@ -1,7 +1,11 @@
-from sklearn.neighbors import *
+import csv
+import os
+
+import networkx as nx
 import numpy as np
 import pandas as pd
-import csv,os
+from sklearn.neighbors import *
+
 
 def optimize_dbscan_eps(data, threshold=90,dm=None):
     if dm is not None:
@@ -21,6 +25,18 @@ def construct_node_data(graph,data):
     node_data = {k: data.iloc[v, :].mean(axis=0) for k, v in nodes.items()}
     node_data = pd.DataFrame.from_dict(node_data, orient='index')
     return node_data
+
+def get_pos(graph,strength):
+    node_keys = graph["node_keys"]
+    node_positions = graph["node_positions"]
+    G = nx.Graph()
+    G.add_nodes_from(graph['nodes'].keys())
+    G.add_edges_from(graph['edges'])
+    pos = {}
+    for i, k in enumerate(node_keys):
+        pos.update({int(k): node_positions[i, :2]})
+    pos = nx.spring_layout(G, pos=pos, k=strength)
+    return pos
 
 ## Access inner attribute
 
