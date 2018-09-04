@@ -3,7 +3,7 @@ import numpy as np
 from sklearn import decomposition, manifold
 from tmap.tda.metric import Metric
 import umap
-
+from scipy.spatial.distance import pdist,squareform
 _METRIC_BUILT_IN = ["braycurtis", "canberra", "chebyshev", "cityblock", "correlation", "cosine", "dice", "euclidean",
                     "hamming", "jaccard", "kulsinski", "mahalanobis", "matching", "minkowski", "rogerstanimoto",
                     "russellrao", "seuclidean", "sokalmichener", "sokalsneath", "sqeuclidean", "yule"]
@@ -165,16 +165,17 @@ class MDS(Filters):
     def __init__(self, components=[0, 1], metric=Metric(metric="euclidean"), **kwds):
         super(MDS, self).__init__(components=components, metric=metric)
 
-        if self.metric.name in _METRIC_BUILT_IN:
+        if self.metric.name == "euclidean":
             self.mds = manifold.MDS(n_components=max(self.components) + 1,
-                                    dissimilarity=self.metric.name, n_jobs=-1, **kwds)
+                                    dissimilarity="euclidean", n_jobs=-1, **kwds)
         else:
             self.mds = manifold.MDS(n_components=max(self.components) + 1,
                                     dissimilarity="precomputed", n_jobs=-1, **kwds)
 
     def fit_transform(self, data):
         data = self._check_data(data)
-        if self.metric.name not in _METRIC_BUILT_IN:
+        if self.metric.name != "euclidean":
+            data = squareform(pdist(data,metric=self.metric.name))
             data = self.metric.fit_transform(data)
         projected_data = self.mds.fit_transform(data)
         return projected_data[:, self.components]

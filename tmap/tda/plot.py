@@ -364,7 +364,7 @@ def vis_progressX(graph, projected_X, filepath=None, color=None, **kwargs):
         visible=False,
         x=center_pos[:, 0],
         y=center_pos[:, 1],
-        text=[str(n)+"<Br>"+'<Br>'.join(np.array(graph.get("sample_names"))[graph["nodes"][n]]) for n in graph["nodes"]],
+        text=[str(n)+"<Br>%s<Br>" % str(np.mean(color.target[nodes[n],0]))+'<Br>'.join(np.array(graph.get("sample_names"))[graph["nodes"][n]]) for n in graph["nodes"]],
         hoverinfo="text",
         marker=dict(color=[color_map[_] for _ in range(len(nodes))],
                     size=[sizes[_] for _ in range(len(nodes))],
@@ -384,7 +384,7 @@ def vis_progressX(graph, projected_X, filepath=None, color=None, **kwargs):
     fig.append_trace(go.Scatter(
         x=center_pos[:, 0],
         y=center_pos[:, 1],
-        text=[str(n)+"<Br>"+'<Br>'.join(np.array(graph.get("sample_names"))[graph["nodes"][n]]) for n in graph["nodes"]],
+        text=[str(n)+"<Br>%s<Br>" % str(np.mean(color.target[nodes[n],0]))+'<Br>'.join(np.array(graph.get("sample_names"))[graph["nodes"][n]]) for n in graph["nodes"]],
         hoverinfo="text",
         marker=dict(color=[color_map[_] for _ in range(len(nodes))],
                     size=[sizes[_] for _ in range(len(nodes))],
@@ -437,3 +437,87 @@ def vis_progressX(graph, projected_X, filepath=None, color=None, **kwargs):
     else:
         plotly.offline.plot(fig, **kwargs)
     # return fig
+
+
+############################################################
+
+def vis_subset(graph,color,fig_size=(1000,1000),subset_edges = None,subset_nodes=None,**kwargs):
+    """
+    vis_subset(graph,color=Color(target=X.loc[:, ["Prevotella"]], dtype="numerical", target_by="sample"),subset_edges=lambda edge: True if abs(node_data.loc[edge[0],"Prevotella"] - node_data.loc[edge[1],"Prevotella"]) <= 0.0001 else False)
+    :param graph:
+    :param color:
+    :param fig_size:
+    :param subset_edges:
+    :param subset_nodes:
+    :param kwargs:
+    :return:
+    """
+    center_pos = graph["node_positions"]
+    nodes = graph["nodes"]
+    sizes = graph["node_sizes"][:,0]
+    # init
+    target2colors = None
+    color_map = None
+    if color:
+        color_map, target2colors = color.get_colors(graph["nodes"])
+    data = []
+    xs = []
+    ys = []
+    for edge in graph["edges"]:
+        if subset_edges:
+            if subset_edges(edge):
+                xs += [center_pos[edge[0], 0],
+                       center_pos[edge[1], 0],
+                       None]
+                ys += [center_pos[edge[0], 1],
+                       center_pos[edge[1], 1],
+                       None]
+    data.append(go.Scatter(
+        x=xs,
+        y=ys,
+        marker=dict(color="#8E9DA2", ),
+        showlegend=False,
+        hoverinfo="none",
+
+        line=dict(width=1),
+        mode="lines"))
+    # draw nodes
+    if color.dtype == "categorical":
+        for cat in set(target2colors[0][:, 0].astype(int)):
+            matched_nodes = np.arange(len(nodes))[target2colors[0][:, 0] == cat]
+
+            data.append(go.Scatter(
+                x=center_pos[target2colors[0][:, 0] == cat, 0],
+                y=center_pos[target2colors[0][:, 0] == cat, 1],
+                text=['<Br>'.join(np.array(graph.get("sample_names"))[graph["nodes"][n]].astype(str)) for n in graph["nodes"] if n in matched_nodes],
+                hoverinfo="text",
+                marker=dict(color=[color_map[_] for _ in matched_nodes],
+                            size=[sizes[_] for _ in matched_nodes],
+                            opacity=1),
+                showlegend=True,
+                name=color.label_encoder.inverse_transform(target2colors[0][:,0].astype(int))[matched_nodes][0],
+                mode="markers"))
+    else:
+        if subset_nodes:
+            subset_n = subset_nodes()
+        else:
+            subset_n = list(range(center_pos.shape[0]))
+        data.append(go.Scatter(
+            x=center_pos[subset_n, 0],
+            y=center_pos[subset_n, 1],
+            text=[str(n)+"<Br>%s<Br>" % str(np.mean(color.target[nodes[n],0]))+'<Br>'.join(np.array(graph.get("sample_names"))[graph["nodes"][n]].astype(str)) for n in graph["nodes"] if n in subset_n],
+            hoverinfo="text",
+            marker=dict(color=[color_map[_] for _ in subset_n],
+                        size=[sizes[_] for _ in subset_n],
+                        opacity=1),
+            showlegend=False,
+            mode="markers"))
+
+    layout = dict(width=fig_size[0],
+                  height=fig_size[1],
+                  xaxis={"range": [0, 1]},
+                  yaxis={"range": [0, 1]},
+                  hovermode="closest"
+                  )
+    fig = dict(data=data, layout=layout)
+    plotly.offline.plot(fig,**kwargs)

@@ -1,10 +1,17 @@
+from __future__ import print_function
+
 import csv
 import os
 
 import networkx as nx
 import numpy as np
 import pandas as pd
+import scipy.stats as scs
 from sklearn.neighbors import *
+from sklearn.preprocessing import MinMaxScaler
+
+from tmap.tda import mapper
+from tmap.tda.cover import Cover
 
 
 def optimize_dbscan_eps(data, threshold=90,dm=None):
@@ -19,6 +26,32 @@ def optimize_dbscan_eps(data, threshold=90,dm=None):
     # to have a percentage of the 'threshold' of points to have their nearest-neighbor covered
     eps = np.percentile(dist[:, 1], threshold)
     return eps
+
+def optimal_r(X, projected_X, clusterer, mid,overlap,step=1):
+    def get_y(r):
+        tm = mapper.Mapper(verbose=0)
+        cover = Cover(projected_data=MinMaxScaler().fit_transform(projected_X), resolution=r, overlap=0.75)
+        graph = tm.map(data=X, cover=cover, clusterer=clusterer)
+        if "adj_matrix" not in graph.keys():
+            return np.inf
+        return abs(scs.skew(graph["adj_matrix"].count()))
+    mid_y = get_y(mid)
+    mid_y_r = get_y(mid + 1)
+    mid_y_l = get_y(mid - 1)
+    while 1:
+        min_r = sorted(zip([mid_y_l,mid_y,mid_y_r],[mid-1,mid,mid+1]))[0][1]
+        if min_r == mid-step:
+            mid -= step
+            mid_y,mid_y_r = mid_y_l,mid_y
+            mid_y_l = get_y(mid)
+        elif min_r == mid + step:
+            mid += step
+            mid_y,mid_y_l = mid_y_r,mid_y
+            mid_y_r = get_y(mid)
+        else:
+            break
+    print("suitable resolution is ",mid)
+    return mid
 
 def construct_node_data(graph,data):
     nodes = graph['nodes']
