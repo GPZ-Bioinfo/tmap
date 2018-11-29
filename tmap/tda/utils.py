@@ -2,7 +2,7 @@ from __future__ import print_function
 
 import csv
 import os
-
+import pickle
 import networkx as nx
 import numpy as np
 import pandas as pd
@@ -30,7 +30,7 @@ def optimize_dbscan_eps(data, threshold=90,dm=None):
 def optimal_r(X, projected_X, clusterer, mid,overlap,step=1):
     def get_y(r):
         tm = mapper.Mapper(verbose=0)
-        cover = Cover(projected_data=MinMaxScaler().fit_transform(projected_X), resolution=r, overlap=0.75)
+        cover = Cover(projected_data=MinMaxScaler().fit_transform(projected_X), resolution=r, overlap=overlap)
         graph = tm.map(data=X, cover=cover, clusterer=clusterer)
         if "adj_matrix" not in graph.keys():
             return np.inf
@@ -55,7 +55,10 @@ def optimal_r(X, projected_X, clusterer, mid,overlap,step=1):
 
 def construct_node_data(graph,data):
     nodes = graph['nodes']
-    node_data = {k: data.iloc[v, :].mean(axis=0) for k, v in nodes.items()}
+    if "iloc" in dir(data):
+        node_data = {k: data.iloc[v, :].mean() for k, v in nodes.items()}
+    else:
+        node_data = {k: np.mean(data[v, :], axis=0) for k, v in nodes.items()}
     node_data = pd.DataFrame.from_dict(node_data, orient='index')
     return node_data
 
@@ -98,6 +101,12 @@ def safe_scores_IO(arg,output_path=None,mode='w'):
         safe_scores = pd.read_csv(arg,index_col=0)
         return safe_scores
 
+def read_graph(path):
+    graph = pickle.load(open(path,'rb'))
+    return graph
+
+def dump_graph(graph,path):
+    pickle.dump(graph,open(path,"wb"))
 
 def output_graph(graph,filepath,sep='\t'):
     """

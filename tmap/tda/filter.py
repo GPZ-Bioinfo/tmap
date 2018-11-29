@@ -4,6 +4,9 @@ from sklearn import decomposition, manifold
 from tmap.tda.metric import Metric
 import umap
 from scipy.spatial.distance import pdist,squareform
+from skbio.stats import ordination
+
+
 _METRIC_BUILT_IN = ["braycurtis", "canberra", "chebyshev", "cityblock", "correlation", "cosine", "dice", "euclidean",
                     "hamming", "jaccard", "kulsinski", "mahalanobis", "matching", "minkowski", "rogerstanimoto",
                     "russellrao", "seuclidean", "sokalmichener", "sokalsneath", "sqeuclidean", "yule"]
@@ -159,6 +162,7 @@ class TSNE(Filters):
 class MDS(Filters):
     """
     MDS filters.
+    Implements with sklearn.maniford.MDS
     Params:
         components: The axis of projection. If you use components 0 and 1, this is [0, 1].
     """
@@ -174,11 +178,36 @@ class MDS(Filters):
 
     def fit_transform(self, data):
         data = self._check_data(data)
-        if self.metric.name != "euclidean":
+        if self.metric.name != "euclidean" and self.metric.name != "precomputed":
             data = squareform(pdist(data,metric=self.metric.name))
+            data = self.metric.fit_transform(data)
+        else:
             data = self.metric.fit_transform(data)
         projected_data = self.mds.fit_transform(data)
         return projected_data[:, self.components]
+
+class PCOA(Filters):
+    """
+    PCoA filters.
+    Implements with skbio.stats.ordination.pcoa
+    Params:
+        components: The axis of projection. If you use components 0 and 1, this is [0, 1].
+    """
+    def __init__(self, metric=Metric(metric="euclidean"), **kwds):
+        super(PCOA, self).__init__()
+        self.metric = metric
+
+    def fit_transform(self, data):
+        data = self._check_data(data)
+        if self.metric.name != "precomputed":
+            data = squareform(pdist(data,metric=self.metric.name))
+            data = self.metric.fit_transform(data)
+        else:
+            data = self.metric.fit_transform(data)
+
+        projected_data = ordination.pcoa(data)
+        self.pcoa = projected_data
+        return self.pcoa.samples.values[:, self.components]
 
 class UMAP(Filters):
     """

@@ -78,7 +78,6 @@ class Mapper(object):
 
         The resulting graph is a dictionary containing multiple keys and corresponding values. For better understanding the meaning of all keys and values. Here is the descriptions of each key.
 
-
                 1. nodes: Another dictionary for storge the mapping relationships between *nodes* and *samples*. Key is the name of nodes. Values is a list of corresponding index of samples.
                 2. edges: A list of 2-tuples for indicating edges between nodes.
                 3. adj_matrix: A square ``DataFrame`` constructed by nodes ID. The elements of the matrix indicate whether pairs of vertices are adjacent or not in the graph. (Unweighted)
@@ -93,6 +92,7 @@ class Mapper(object):
         # nodes, edges and graph of the TDA graph
         graph = {}
         nodes = {}
+        raw_nodes = {}
 
         # projection data & raw data should have a same number of points
         assert data.shape[0] == cover.n_points
@@ -122,9 +122,11 @@ class Mapper(object):
                 cube_data = data_vals[cube]
             else:
                 cube_data = data_vals[cube][:, cube]
-
             cube_data_idx = data_idx[cube]
             if cube_data.shape[0] >= min_cluster_samples:
+                # storge raw node2samples relationship
+                raw_point_mask = np.zeros(data_vals.shape[0], dtype=bool)
+                raw_point_mask[cube_data_idx] = True
                 if (clusterer is not None) and ("fit" in dir(clusterer)):
                     clusterer.fit(cube_data)
                     for label in np.unique(clusterer.labels_):
@@ -133,12 +135,13 @@ class Mapper(object):
                             point_mask = np.zeros(data_vals.shape[0], dtype=bool)
                             point_mask[cube_data_idx[clusterer.labels_ == label]] = True
                             nodes[node_id] = point_mask
+                            raw_nodes[node_id] = raw_point_mask
                             node_id += 1
+
                 else:
                     # assumed to have a whole cluster of cubes!!!
-                    point_mask = np.zeros(data_vals.shape[0], dtype=bool)
-                    point_mask[cube_data_idx] = True
-                    nodes[node_id] = point_mask
+                    # it equals to the raw node2samples
+                    nodes[node_id] = raw_point_mask
                     node_id += 1
 
         if self.verbose >= 1:
@@ -165,15 +168,21 @@ class Mapper(object):
             print("...construct a TDA graph.")
 
         node_ids = nodes.keys()
-        # set the NaN value for filtering edges with pandas stack function
-        adj_matrix = pd.DataFrame(data=np.nan, index=node_ids, columns=node_ids)
-        # todo: this edges making step to be improved? using some native numpy?
-        for k1, k2 in itertools.combinations(node_ids, 2):
-            if np.any(nodes[k1] & nodes[k2]):
-                adj_matrix.loc[k1, k2] = 1
 
-        edges = adj_matrix.stack(dropna=True)
-        edges = edges.index.tolist()
+        edges = [edge for edge in itertools.combinations(node_ids, 2) if np.any(nodes[edge[0]] & nodes[edge[1]])]
+        edges_df = pd.DataFrame(columns=['Source','End'],data=np.array(edges))
+        adj_matrix = pd.crosstab(edges_df.Source,edges_df.End)
+        adj_matrix = adj_matrix.reindex(index=node_ids, columns=node_ids).replace(0, np.nan)
+        # set the NaN value for filtering edges with pandas stack function
+        # adj_matrix = pd.DataFrame(data=np.nan, index=node_ids, columns=node_ids)
+        # # todo: this edges making step to be improved? using some native numpy?
+        # for k1, k2 in itertools.combinations(node_ids, 2):
+        #     if np.any(nodes[k1] & nodes[k2]):
+        #         adj_matrix.loc[k1, k2] = 1
+        #         adj_matrix.loc[k2, k1] = 1
+        #
+        # edges = adj_matrix.stack(dropna=True)
+        # edges = edges.index.tolist()
         if self.verbose >= 1:
             print("...create %s edges." % (len(edges)))
             print("Finish TDA mapping")
@@ -191,6 +200,9 @@ class Mapper(object):
         graph["node_keys"] = node_keys
         graph["node_positions"] = node_positions
         graph["node_sizes"] = node_sizes
-        graph['params'] = {'cluster':clusterer.get_params(),'cover':{'resolution':cover.resolution,'overlap':cover.overlap}}
+        graph['params'] = {'cluster':clusterer.get_params(),
+                           'cover':{'resolution':cover.resolution,
+                                    'overlap':cover.overlap},
+                           '_raw_nodes':raw_nodes}
         return graph
 

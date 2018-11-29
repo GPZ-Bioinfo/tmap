@@ -6,12 +6,13 @@ import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
+import pandas as pd
 import plotly
 import plotly.graph_objs as go
 from scipy import stats
 from sklearn import decomposition
-from sklearn.preprocessing import LabelEncoder, MinMaxScaler
-
+from sklearn.preprocessing import LabelEncoder, MinMaxScaler,maxabs_scale
+from tmap.netx.SAFE import construct_node_data
 
 class Color(object):
     """
@@ -102,17 +103,17 @@ class Color(object):
 
         q1, median, q3 = np.percentile(target, 25), np.percentile(target, 50), np.percentile(target, 75)
 
-        # if len(set([q1,median,q3])) != 3:
-        #     same_bounds = []
+
         index_min_q1 = np.where(target <= q1)[0]
         index_q1_median = np.where(((target >= q1) & (target <= median)))[0]
         index_median_q3 = np.where(((target >= median) & (target <= q3)))[0]
         index_q3_max = np.where(target >= q3)[0]
 
-        target_min_q1 = scaler_min_q1.fit_transform(target[index_min_q1])
-        target_q1_median = scaler_q1_median.fit_transform(target[index_q1_median])
-        target_median_q3 = scaler_median_q3.fit_transform(target[index_median_q3])
-        target_q3_max = scaler_q3_max.fit_transform(target[index_q3_max])
+        target_min_q1 = scaler_min_q1.fit_transform(target[index_min_q1]) if any(index_min_q1) else np.zeros(target[index_min_q1].shape)
+        target_q1_median = scaler_q1_median.fit_transform(target[index_q1_median]) if any(index_q1_median) else np.zeros(target[index_q1_median].shape)
+        target_median_q3 = scaler_median_q3.fit_transform(target[index_median_q3]) if any(index_median_q3) else np.zeros(target[index_median_q3].shape)
+        target_q3_max = scaler_q3_max.fit_transform(target[index_q3_max]) if any(index_q3_max) else np.zeros(target[index_q3_max].shape)
+        # in case situation which will raise ValueError when sliced_index is all False.
 
         if all(target_q3_max == 0.75):
             target_q3_max = np.ones(target_q3_max.shape)
@@ -148,8 +149,9 @@ class Color(object):
                 # most common value (if more than one, the smallest is return)
                 node_color_idx[i] = stats.mode(target_in_node)[0][0]
             elif self.dtype == "numerical":
-                node_color_idx[i] = np.mean(target_in_node)
-
+                node_color_idx[i] = np.nanmean(target_in_node)
+        if np.any(np.isnan(node_color_idx)):
+            print("Nan was found in the given target, Please check the input data.")
         _node_color_idx = self._rescale_target(node_color_idx)
         node_colors = [self._get_hex_color(idx) for idx in _node_color_idx]
 
@@ -165,8 +167,10 @@ class Color(object):
         # todo: accept a customzied color map [via the 'cmap' parameter]
         if self.target_by != "sample":
             raise IOError
-
-        _sample_color_idx = self._rescale_target(self.target)
+        if self.dtype == "numerical":
+            _sample_color_idx = self._rescale_target(self.target)
+        else:
+            _sample_color_idx = self._rescale_target(self.target.reshape(-1,1))
         sample_colors = [self._get_hex_color(idx) for idx in _sample_color_idx]
 
         return sample_colors
@@ -289,68 +293,100 @@ def show(data, graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2,
     plt.show()
 
 
-def vis_progressX(graph, projected_X, filepath=None, color=None, **kwargs):
-    center_pos = graph["node_positions"]
+def get_arrows(graph, projected_X, safe_score, max_length=1,pvalue=0.05):
+    min_p_value = 1.0 / (5000 + 1.0)
+    threshold = np.log10(pvalue) / np.log10(min_p_value)
+
+    node_pos = construct_node_data(graph, projected_X)
+
+    safe_score_df = pd.DataFrame.from_dict(safe_score, orient='columns')
+    safe_score_df = safe_score_df.where(safe_score_df>=threshold,other=0)
+    norm_df = safe_score_df.apply(lambda x: maxabs_scale(x), axis=1, result_type='broadcast')
+
+    x_cor = norm_df.apply(lambda x: x * node_pos.values[:, 0], axis=0)
+    y_cor = norm_df.apply(lambda x: x * node_pos.values[:, 1], axis=0)
+
+    x_cor = x_cor.mean(0)
+    y_cor = y_cor.mean(0)
+    arrow_df = pd.DataFrame([x_cor, y_cor], index=['x coordinate', 'y coordinate'], columns=safe_score_df.columns)
+    all_fea_scale = maxabs_scale(safe_score_df.sum(0))
+    # scale each arrow by the sum of safe score， maximun is 1 others are percentage not larger than 100%.
+    scaled_ratio = max_length * all_fea_scale / arrow_df.apply(lambda x: np.sqrt(np.sum(x ** 2)), axis=0)
+    # using max length to multipy by scale ratio and denote the original length.
+    scaled_arrow_df = arrow_df * np.repeat(scaled_ratio.values.reshape(1, -1), axis=0, repeats=2).reshape(2, -1)
+
+    return scaled_arrow_df
+
+def vis_progressX(graph, projected_X, simple=False,mode='file', color=None,_color_SAFE=None, **kwargs):
+    """
+
+    :param graph:
+    :param projected_X:
+    :param filepath:
+    :param color:
+    :param _color_SAFE:
+    :param kwargs:
+    :return:
+    """
+    node_pos = graph["node_positions"]
     ori_MDS = MinMaxScaler().fit_transform(projected_X)
     nodes = graph["nodes"]
     sizes = graph["node_sizes"][:,0]
 
     if color:
         color_map, target2colors = color.get_colors(graph["nodes"])
-    if color.target_by =="node":
+    else:
+        color = Color([0] * projected_X.shape[0])
+
+    if color.target_by == "node":
         samples_colors = "red"
     else:
         samples_colors = color.get_sample_colors()
+
+    # For calculating the dynamic process.
+    # reordering the ori_MDS into the point_pos
+    # reshaping the node_pos into the center_pos
     point_tmp = []
     center_tmp = []
-    point_colors = []
-
+    samples_colors_dynamic = []
     for n in nodes:
         point_tmp.append(ori_MDS[nodes[n], :])
-        center_tmp.append(np.concatenate([center_pos[[n], :]] * len(nodes[n]), axis=0))
+        center_tmp.append(np.concatenate([node_pos[[n], :]] * len(nodes[n]), axis=0))
         if color:
-            point_colors += list(np.repeat(color_map[n], len(nodes[n])))
+            samples_colors_dynamic += list(np.repeat(color_map[n], len(nodes[n])))
         else:
-            point_colors.append("blue")
-    point_pos = np.concatenate(point_tmp, axis=0)
+            samples_colors_dynamic.append("blue")
+    samples_pos = np.concatenate(point_tmp, axis=0)
     center_pos = np.concatenate(center_tmp, axis=0)
 
-    fig = plotly.tools.make_subplots(rows=2, cols=2, specs=[[{'rowspan': 2}, {}], [None, {}]],
-                                     # subplot_titles=('Mapping process', 'Original projection', 'tmap graph')
-                                     )
-
-    fig.append_trace(go.Scatter(
-        visible=True,
-        x=ori_MDS[:, 0],
-        y=ori_MDS[:, 1],
-        marker=dict(color=samples_colors),
-        showlegend=False,
-        mode="markers"), 1, 1)
-    # to center
-    steps = 10
-    for s in range(steps + 1):
-        fig.append_trace(go.Scatter(
-            visible=False,
-            x=point_pos[:, 0] + ((center_pos - point_pos) / steps * s)[:, 0],
-            y=point_pos[:, 1] + ((center_pos - point_pos) / steps * s)[:, 1],
-            marker=dict(color=point_colors),
-            showlegend=False,
-            mode="markers"), 1, 1)
-    # to spring layout
-    center_pos = graph["node_positions"]
-    # final_pos = get_pos(graph,0.035)
-    # final_pos = np.array([final_pos[_] for _ in list(graph["nodes"].keys())])
-
+    node_pos = graph["node_positions"]
+    # init edge plot data
     xs = []
     ys = []
     for edge in graph["edges"]:
-        xs += [center_pos[edge[0], 0],
-               center_pos[edge[1], 0],
+        xs += [node_pos[edge[0], 0],
+               node_pos[edge[1], 0],
                None]
-        ys += [center_pos[edge[0], 1],
-               center_pos[edge[1], 1],
+        ys += [node_pos[edge[0], 1],
+               node_pos[edge[1], 1],
                None]
-    fig.append_trace(go.Scatter(
+    # init text data for each node
+    if color.target_by == "sample":
+        _text = [str(n) + "<Br>%s<Br>" % str(np.mean(color.target[nodes[n], 0])) + '<Br>'.join(np.array(graph.get("sample_names")).astype(str)[graph["nodes"][n]]) for n in
+                 graph["nodes"]]
+    else:
+        _text = [str(n) + "<Br>%s<Br>" % str(color.target[n]) + '<Br>'.join(np.array(graph.get("sample_names")).astype(str)[graph["nodes"][n]]) for n in
+                 graph["nodes"]]
+    # if there are _color_SAFE, it will present two kinds of color.
+    # one is base on original data, one is transformed-SAFE data.
+    if _color_SAFE is not None:
+        safe_color, safe_t2c = _color_SAFE.get_colors(graph["nodes"])
+        node_colors = [safe_color[_] for _ in range(len(nodes))]
+    else:
+        node_colors = [color_map[_] for _ in range(len(nodes))]
+
+    node_line = go.Scatter(
+        # ordination line
         visible=False,
         x=xs,
         y=ys,
@@ -358,166 +394,175 @@ def vis_progressX(graph, projected_X, filepath=None, color=None, **kwargs):
                     opacity=0.7),
         line=dict(width=1),
         showlegend=False,
-        mode="lines"), 1, 1)
-
-    fig.append_trace(go.Scatter(
+        mode="lines")
+    node_position = go.Scatter(
+        # node position
         visible=False,
-        x=center_pos[:, 0],
-        y=center_pos[:, 1],
-        text=[str(n)+"<Br>%s<Br>" % str(np.mean(color.target[nodes[n],0]))+'<Br>'.join(np.array(graph.get("sample_names"))[graph["nodes"][n]]) for n in graph["nodes"]],
+        x=node_pos[:, 0],
+        y=node_pos[:, 1],
+        text=_text,
         hoverinfo="text",
-        marker=dict(color=[color_map[_] for _ in range(len(nodes))],
-                    size=[sizes[_] for _ in range(len(nodes))],
+        marker=dict(color=node_colors,
+                    size=[5 + sizes[_] for _ in range(len(nodes))],
                     opacity=1),
         showlegend=False,
-        mode="markers"), 1, 1)
-    ############################################################
-    fig.append_trace(go.Scatter(
-        x=xs,
-        y=ys,
-        marker=dict(color="#8E9DA2", ),
-        showlegend=False,
-        hoverinfo="none",
-
-        line=dict(width=1),
-        mode="lines"), 2, 2)
-    fig.append_trace(go.Scatter(
-        x=center_pos[:, 0],
-        y=center_pos[:, 1],
-        text=[str(n)+"<Br>%s<Br>" % str(np.mean(color.target[nodes[n],0]))+'<Br>'.join(np.array(graph.get("sample_names"))[graph["nodes"][n]]) for n in graph["nodes"]],
-        hoverinfo="text",
-        marker=dict(color=[color_map[_] for _ in range(len(nodes))],
-                    size=[sizes[_] for _ in range(len(nodes))],
-                    opacity=1),
-        showlegend=False,
-        mode="markers"), 2, 2)
-    fig.append_trace(go.Scatter(
+        mode="markers")
+    samples_position = go.Scatter(
+        visible=True,
         x=ori_MDS[:, 0],
         y=ori_MDS[:, 1],
+        marker=dict(color=samples_colors),
         text=graph.get("sample_names"),
         hoverinfo="text",
         showlegend=False,
-        marker=dict(color=samples_colors),
-        mode="markers"), 1, 2)
-    ############################################################
-    steps = []
-    for i in range(14):
-        step = dict(
-            method='restyle',
-            args=['visible', [False] * 14 + [True, True, True]],
-        )
-        if i >= 12:
-            step["args"][1][-5:] = [True] * 5
-        else:
-            step['args'][1][i] = True  # Toggle i'th trace to "visible"
-        steps.append(step)
+        mode="markers")
 
-    sliders = [dict(
-        active=0,
-        currentvalue={"prefix": "status: "},
-        pad={"t": 14},
-        steps=steps
-    )]
-    ############################################################
-    layout = dict(sliders=sliders,
-                  width=2000,
-                  height=1000,
-                  xaxis1={"range": [0, 1], "domain": [0, 0.5]},
-                  yaxis1={"range": [0, 1], "domain": [0, 1]},
-                  xaxis2={"range": [0, 1], "domain": [0.6, 0.9]},
-                  yaxis2={"range": [0, 1], "domain": [0.5, 1]},
-                  xaxis3={"range": [0, 1], "domain": [0.6, 0.9]},
-                  yaxis3={"range": [0, 1], "domain": [0, 0.5]},
-                  hovermode="closest"
-                  )
-    fig.layout.update(layout)
-    # fig = dict(data=fig.data, layout=layout)
-    if filepath:
-        plotly.offline.plot(fig, filename=filepath, **kwargs)
+    if simple:
+        fig = plotly.tools.make_subplots(1,1)
+        node_line['visible'] = True
+        node_position['visible'] = True
+        fig.append_trace(node_line, 1, 1)
+        fig.append_trace(node_position, 1,1)
+
     else:
+        fig = plotly.tools.make_subplots(rows=2, cols=2, specs=[[{'rowspan': 2}, {}], [None, {}]],
+                                         # subplot_titles=('Mapping process', 'Original projection', 'tmap graph')
+                                         )
+        # original place or ordination place
+        fig.append_trace(samples_position, 1, 1)
+
+        # dynamic process to generate 10 binning positions
+        steps = 10
+        for s in range(steps + 1):
+            fig.append_trace(go.Scatter(
+                visible=False,
+                x=samples_pos[:, 0] + ((center_pos - samples_pos) / steps * s)[:, 0],
+                y=samples_pos[:, 1] + ((center_pos - samples_pos) / steps * s)[:, 1],
+                marker=dict(color=samples_colors_dynamic),
+                showlegend=False,
+                mode="markers"), 1, 1)
+        # to node positions
+
+        # order is important, do not change the order !!!
+        fig.append_trace(node_line, 1, 1)
+        fig.append_trace(node_position, 1, 1)
+        node_line['visible'] = True
+        node_position['visible'] = True
+        samples_position['visible'] = True
+        fig.append_trace(node_line, 2, 2)
+        fig.append_trace(node_position, 2, 2)
+
+        fig.append_trace(samples_position, 1, 2)
+        ############################################################
+        steps = []
+        for i in range(14):
+            step = dict(
+                method='restyle',
+                args=['visible', [False] * 14 + [True, True, True]],
+            )
+            if i >= 12:
+                step["args"][1][-5:] = [True] * 5
+            else:
+                step['args'][1][i] = True  # Toggle i'th trace to "visible"
+            steps.append(step)
+
+        sliders = [dict(
+            active=0,
+            currentvalue={"prefix": "status: "},
+            pad={"t": 14},
+            steps=steps
+        )]
+        ############################################################
+        layout = dict(sliders=sliders,
+                      width=2000,
+                      height=1000,
+                      xaxis1={"range": [0, 1], "domain": [0, 0.5]},
+                      yaxis1={"range": [0, 1], "domain": [0, 1]},
+                      xaxis2={"range": [0, 1], "domain": [0.6, 0.9]},
+                      yaxis2={"range": [0, 1], "domain": [0.5, 1]},
+                      xaxis3={"range": [0, 1], "domain": [0.6, 0.9]},
+                      yaxis3={"range": [0, 1], "domain": [0, 0.5]},
+                      hovermode="closest"
+                      )
+        fig.layout.update(layout)
+
+    if mode == 'file':
         plotly.offline.plot(fig, **kwargs)
-    # return fig
+
+    elif mode == 'web':
+        plotly.offline.iplot(fig, **kwargs)
+    elif mode == 'obj':
+        return fig
+    else:
+        print("mode params must be one of 'file', 'web', 'obj'. \n 'file': output html file \n 'web': show in web browser. \n 'obj': return a dict object.")
 
 
-############################################################
-
-def vis_subset(graph,color,fig_size=(1000,1000),subset_edges = None,subset_nodes=None,**kwargs):
+def draw_stats_plot(graph,safe_score,fea, metainfo,_filter_size=0,**kwargs):
     """
-    vis_subset(graph,color=Color(target=X.loc[:, ["Prevotella"]], dtype="numerical", target_by="sample"),subset_edges=lambda edge: True if abs(node_data.loc[edge[0],"Prevotella"] - node_data.loc[edge[1],"Prevotella"]) <= 0.0001 else False)
+
+    Draw simple node network which only show component which is larger than _filter_size and colorized with
+    its safe_score.
+
     :param graph:
-    :param color:
-    :param fig_size:
-    :param subset_edges:
-    :param subset_nodes:
+    :param safe_score:
+    :param fea:
+    :param metainfo:
+    :param _filter_size:
     :param kwargs:
     :return:
     """
-    center_pos = graph["node_positions"]
-    nodes = graph["nodes"]
-    sizes = graph["node_sizes"][:,0]
-    # init
-    target2colors = None
-    color_map = None
-    if color:
-        color_map, target2colors = color.get_colors(graph["nodes"])
-    data = []
+    enriched_nodes, comps_nodes = metainfo[fea]
+
+    node_pos = graph["node_positions"]
+    sizes = graph["node_sizes"][:, 0]
+    fig = plotly.tools.make_subplots(1, 1)
     xs = []
     ys = []
+
     for edge in graph["edges"]:
-        if subset_edges:
-            if subset_edges(edge):
-                xs += [center_pos[edge[0], 0],
-                       center_pos[edge[1], 0],
-                       None]
-                ys += [center_pos[edge[0], 1],
-                       center_pos[edge[1], 1],
-                       None]
-    data.append(go.Scatter(
+        xs += [node_pos[edge[0], 0],
+               node_pos[edge[1], 0],
+               None]
+        ys += [node_pos[edge[0], 1],
+               node_pos[edge[1], 1],
+               None]
+
+    node_line = go.Scatter(
+        # ordination line
+        visible=True,
         x=xs,
         y=ys,
+        hoverinfo='none',
         marker=dict(color="#8E9DA2", ),
-        showlegend=False,
-        hoverinfo="none",
-
         line=dict(width=1),
-        mode="lines"))
-    # draw nodes
-    if color.dtype == "categorical":
-        for cat in set(target2colors[0][:, 0].astype(int)):
-            matched_nodes = np.arange(len(nodes))[target2colors[0][:, 0] == cat]
+        showlegend=False,
+        mode="lines")
 
-            data.append(go.Scatter(
-                x=center_pos[target2colors[0][:, 0] == cat, 0],
-                y=center_pos[target2colors[0][:, 0] == cat, 1],
-                text=['<Br>'.join(np.array(graph.get("sample_names"))[graph["nodes"][n]].astype(str)) for n in graph["nodes"] if n in matched_nodes],
-                hoverinfo="text",
-                marker=dict(color=[color_map[_] for _ in matched_nodes],
-                            size=[sizes[_] for _ in matched_nodes],
-                            opacity=1),
-                showlegend=True,
-                name=color.label_encoder.inverse_transform(target2colors[0][:,0].astype(int))[matched_nodes][0],
-                mode="markers"))
-    else:
-        if subset_nodes:
-            subset_n = subset_nodes()
-        else:
-            subset_n = list(range(center_pos.shape[0]))
-        data.append(go.Scatter(
-            x=center_pos[subset_n, 0],
-            y=center_pos[subset_n, 1],
-            text=[str(n)+"<Br>%s<Br>" % str(np.mean(color.target[nodes[n],0]))+'<Br>'.join(np.array(graph.get("sample_names"))[graph["nodes"][n]].astype(str)) for n in graph["nodes"] if n in subset_n],
+    fig.append_trace(node_line, 1, 1)
+
+    for idx, nodes in enumerate(comps_nodes):
+        if _filter_size:
+            if len(nodes) <= _filter_size:
+                continue
+        tmp1 = {k: v if k in nodes else np.nan for k, v in safe_score[fea].items()}
+        node_position = go.Scatter(
+            # node position
+            visible=True,
+            x=node_pos[[k for k, v in safe_score[fea].items() if not np.isnan(tmp1[k])], 0],
+            y=node_pos[[k for k, v in safe_score[fea].items() if not np.isnan(tmp1[k])], 1],
             hoverinfo="text",
-            marker=dict(color=[color_map[_] for _ in subset_n],
-                        size=[sizes[_] for _ in subset_n],
-                        opacity=1),
-            showlegend=False,
-            mode="markers"))
+            text=['node:%s,SAFE:%s' % (k, safe_score[fea][k]) for k, v in safe_score[fea].items() if not np.isnan(tmp1[k])],
+            marker=dict(  # color=node_colors,
+                size=[7 + sizes[_] for _ in [k for k, v in safe_score[fea].items() if not np.isnan(tmp1[k])]],
+                opacity=0.8),
+            showlegend=True,
+            name='comps_%s' % idx,
+            mode="markers")
+        fig.append_trace(node_position, 1, 1)
 
-    layout = dict(width=fig_size[0],
-                  height=fig_size[1],
-                  xaxis={"range": [0, 1]},
-                  yaxis={"range": [0, 1]},
-                  hovermode="closest"
-                  )
-    fig = dict(data=data, layout=layout)
+    fig.layout.font.size = 15
+    fig.layout.title = fea
+    fig.layout.height = 1500
+    fig.layout.width = 1500
+    fig.layout.hovermode = 'closest'
     plotly.offline.plot(fig,**kwargs)
