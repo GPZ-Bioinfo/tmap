@@ -317,14 +317,20 @@ def get_arrows(graph, projected_X, safe_score, max_length=1,pvalue=0.05):
 
     return scaled_arrow_df
 
+
 def vis_progressX(graph, projected_X, simple=False,mode='file', color=None,_color_SAFE=None, **kwargs):
+
     """
+    For dynamic visualizing tmap construction process, it performs a interactive graph based on `plotly` with a slider to present the process from ordination to graph step by step. Currently, it doesn't provide any API for overriding the number of step from ordination to graph.
+
+    If you want to draw a simple graph with edges and nodes instead of the process,  
+
 
     :param graph:
-    :param projected_X:
-    :param filepath:
+    :param np.array projected_X:
     :param color:
     :param _color_SAFE:
+    :param bool simple:
     :param kwargs:
     :return:
     """
@@ -497,9 +503,8 @@ def vis_progressX(graph, projected_X, simple=False,mode='file', color=None,_colo
         print("mode params must be one of 'file', 'web', 'obj'. \n 'file': output html file \n 'web': show in web browser. \n 'obj': return a dict object.")
 
 
-def draw_stats_plot(graph,safe_score,fea, metainfo,_filter_size=0,**kwargs):
+def draw_enriched_plot(graph,safe_score,fea, metainfo,_filter_size=0,**kwargs):
     """
-
     Draw simple node network which only show component which is larger than _filter_size and colorized with
     its safe_score.
 
@@ -566,3 +571,39 @@ def draw_stats_plot(graph,safe_score,fea, metainfo,_filter_size=0,**kwargs):
     fig.layout.width = 1500
     fig.layout.hovermode = 'closest'
     plotly.offline.plot(fig,**kwargs)
+
+def draw_coenrichment_ranksum(metainfo,fea,others,node_data,node_metadata,**kwargs):
+
+    for o_f in others:
+        fig = go.Figure()
+        s1, s2, s3, s4 = metainfo[o_f]
+
+        if o_f in node_data.columns:
+            _data = node_data
+        elif o_f in node_metadata.columns:
+            _data = node_metadata
+        else:
+            print('error feature %s' % o_f)
+            return
+        y1 = _data.loc[s1, o_f]
+        y2 = _data.loc[set.union(s2, s3, s4), o_f]
+
+        if fea in node_data.columns:
+            _data = node_data
+        elif fea in node_metadata.columns:
+            _data = node_metadata
+        _y1 = _data.loc[s1, fea]
+        _y2 = _data.loc[set.union(s2, s3, s4), fea]
+        # ranksum_p1 = scs.ranksums(y1, y2)[1]
+        # ranksum_p2 = scs.ranksums(_y1, _y2)[1]
+
+        datas = []
+        datas.append(go.Box(y=y1,x='%s enriched' % o_f))
+        datas.append(go.Box(y=y2, x='%s non-enriched' % o_f))
+
+        datas.append(go.Box(y=_y1,x='%s enriched' % fea))
+        datas.append(go.Box(y=_y2, x='%s non-enriched' % fea))
+        fig.data += datas
+        plotly.offline.plot(fig,**kwargs)
+
+

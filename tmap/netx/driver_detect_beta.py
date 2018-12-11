@@ -1,3 +1,8 @@
+####
+# test pipelines which includes SHAP and xgboost.
+# lth 2018-12-10
+####
+
 import itertools
 import os
 import pickle
