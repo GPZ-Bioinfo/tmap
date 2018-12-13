@@ -24,4 +24,4 @@ graph = tm.map(data=StandardScaler().fit_transform(X), cover=cover, clusterer=cl
 print(cover_ratio(graph,X))
 # Step4. Visualization
 color = Color(target=y, dtype="categorical")
-show(data=X, graph=graph, color=color, fig_size=(10, 10), node_size=15, mode='spring', strength=0.04)
+show(data=X, graph=graph, color=color, fig_size=(10, 10), node_size=15, mode='spring', strength=0.15)
