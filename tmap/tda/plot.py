@@ -9,10 +9,13 @@ import numpy as np
 import pandas as pd
 import plotly
 import plotly.graph_objs as go
+from plotly import tools
 from scipy import stats
 from sklearn import decomposition
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler, maxabs_scale
+
 from tmap.netx.SAFE import construct_node_data
+from tmap.netx.SAFE import get_enriched_nodes
 
 
 class Color(object):
@@ -179,8 +182,8 @@ class Color(object):
             _sample_color_idx = self._rescale_target(self.target)
         else:
             labels = self.label_encoder.inverse_transform(self.target)
-            _sample_color_idx = np.arange(0.0, 1.1, 1.0 / (len(set(labels))-1)) # add 1 into idx, so it is 1.1 which is little bigger than 1.
-            target2idx = dict(zip(sorted(set(labels)),_sample_color_idx))
+            _sample_color_idx = np.arange(0.0, 1.1, 1.0 / (len(set(labels)) - 1))  # add 1 into idx, so it is 1.1 which is little bigger than 1.
+            target2idx = dict(zip(sorted(set(labels)), _sample_color_idx))
 
         if type(cmap) == dict and self.dtype == 'categorical':
             sample_colors = [cmap.get(_, 'blue') for _ in labels]
@@ -189,7 +192,10 @@ class Color(object):
             sample_colors = [self._get_hex_color(idx) for idx in _sample_color_idx]
         else:
             sample_colors = [self._get_hex_color(target2idx[label]) for label in labels]
-        return sample_colors,target2idx
+        if self.dtype == "numerical":
+            return sample_colors
+        else:
+            return sample_colors, target2idx
 
 
 def show(data, graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2, mode=None, strength=None):
@@ -354,7 +360,7 @@ def get_arrows(graph, projected_X, safe_score, max_length=1, pvalue=0.05):
     return scaled_arrow_df
 
 
-def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _color_SAFE=None, **kwargs):
+def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _color_SAFE=None, min_size=10, max_size=40, **kwargs):
     """
     For dynamic visualizing tmap construction process, it performs a interactive graph based on `plotly` with a slider to present the process from ordination to graph step by step. Currently, it doesn't provide any API for overriding the number of step from ordination to graph. It may be implemented at the future.
 
@@ -383,7 +389,7 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
     nodes = graph["nodes"]
     sizes = graph["node_sizes"][:, 0]
     sample_names = np.array(graph.get("sample_names", []))
-
+    minmax_scaler = MinMaxScaler(feature_range=(min_size, max_size))
     if color:
         color_map, target2colors = color.get_colors(graph["nodes"])
     else:
@@ -391,8 +397,10 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
 
     if color.target_by == "node":
         samples_colors = "red"
+    elif color.dtype == 'categorical':
+        samples_colors, cat2colors = color.get_sample_colors()
     else:
-        samples_colors,cat2colors = color.get_sample_colors()
+        samples_colors = color.get_sample_colors()
 
     # For calculating the dynamic process. It need to be aligned first.
     # reconstructing the ori_MDS into the samples_pos
@@ -466,7 +474,7 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
         text=node_text,
         hoverinfo="text",
         marker=dict(color=node_colors,
-                    size=[5 + sizes[_] for _ in range(len(nodes))],
+                    size=minmax_scaler.fit_transform(np.array([sizes[_] for _ in range(len(nodes))]).reshape(-1, 1)),
                     opacity=1),
         showlegend=False,
         mode="markers")
@@ -488,7 +496,6 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
         node_position['visible'] = True
         fig.append_trace(node_line, 1, 1)
         fig.append_trace(node_position, 1, 1)
-
     else:
         fig = plotly.tools.make_subplots(rows=2, cols=2, specs=[[{'rowspan': 2}, {}], [None, {}]],
                                          # subplot_titles=('Mapping process', 'Original projection', 'tmap graph')
@@ -512,7 +519,7 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
                 mode="markers"), 1, 1)
 
         # Order is important, do not change the order !!!
-        # This is the last 5 should be visible at any time
+        # There are the last 5 should be visible at any time
         fig.append_trace(node_line, 1, 1)
         fig.append_trace(node_position, 1, 1)
         node_line['visible'] = True
@@ -673,3 +680,80 @@ def draw_coenrichment_ranksum(metainfo, fea, others, node_data, node_metadata, *
         datas.append(go.Box(y=_y2, x='%s non-enriched' % fea))
         fig.data += datas
         plotly.offline.plot(fig, **kwargs)
+
+
+def pair_draw(data, projected_X, fit_result, safe_scores, graph, fea1, fea2=None, n_iter=5000, p_value=0.05,):
+    if fea2 is not None:
+        col = 2
+        subtitles = ['%s ordination' % fea1,
+                     '%s Tmap' % fea1,
+                     '%s ordination' % fea2,
+                     '%s Tmap' % fea2]
+        feas = [fea1,fea2]
+    else:
+        col = 1
+        subtitles = ['%s ordination' % fea1,
+                     '%s Tmap' % fea1]
+        feas = [fea1]
+
+    fig = tools.make_subplots(2, col, subplot_titles=subtitles,
+                              horizontal_spacing=0,
+                              vertical_spacing=0)
+
+    def draw_ord_and_tmap(fig, projected_X, fit_result, fea, row, col, data):
+        if fea in data.columns:
+            color = Color(data.loc[:, fea].astype(float), target_by='sample')
+        else:
+            print('Error occur, %s seem like a new feature for given data' % fea)
+
+        fig.append_trace(go.Scatter(x=projected_X[:, 0],
+                                    y=projected_X[:, 1],
+                                    #                                      text=metadata.loc[:,fea],
+                                    hoverinfo='text',
+                                    mode='markers',
+                                    marker=dict(color=color.get_sample_colors())
+                                    , showlegend=False),
+                         row, col)
+        if fea in fit_result.index:
+            fig.append_trace(go.Scatter(x=[0, fit_result.loc[fea, 'adj_Source']],
+                                        y=[0, fit_result.loc[fea, 'adj_End']],
+                                        mode='lines+text', showlegend=False,
+                                        text=['', round(fit_result.loc[fea, 'r2'], 4)]), row, col)
+
+
+    min_p_value = 1.0 / (n_iter + 1.0)
+    threshold = np.log10(p_value) / np.log10(min_p_value)
+    enriched_nodes = get_enriched_nodes(safe_scores, threshold, graph)
+
+    fig_container = []
+    for idx,fea in enumerate(feas):
+        draw_ord_and_tmap(fig, projected_X, fit_result, fea, idx+1, 1, data)
+        cache = {node: safe_scores[fea][node] if node in enriched_nodes[fea] else 0 for node in safe_scores[fea].keys()}
+        f = vis_progressX(graph, projected_X, color=Color(cache, target_by='node'), mode='obj', simple=True)
+        fig_container.append(f)
+
+    for idx,f in enumerate(fig_container):
+        for _ in f.data:
+            fig.append_trace(_,
+                             idx+1,
+                             2)
+
+    fig.layout.width = 2000
+    fig.layout.height = 2000
+    fig.layout.xaxis1.zeroline = False
+    fig.layout.yaxis1.zeroline = False
+    fig.layout.xaxis3.zeroline = False
+    fig.layout.yaxis3.zeroline = False
+    fig.layout.hovermode = 'closest'
+    # showticklabels
+    for _ in dir(fig.layout):
+        if _.startswith('xaxis') or _.startswith('yaxis'):
+            fig.layout[_]['showticklabels'] = False
+    fig.layout.font.update(dict(size=20))
+    for _ in fig.layout.annotations:
+        _['font'].update(dict(size=25))
+    return fig
+    # plotly.offline.plot(fig, auto_open=False, **kwargs)
+    # plotly.offline.iplot(fig)
+
+

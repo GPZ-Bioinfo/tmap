@@ -98,13 +98,13 @@ def convertor(neighborhood_test,node_data,n_iter,):
     safe_scores = safe_scores.to_dict(orient="dict")
     return safe_scores
 
-def SAFE(graph, node_data, n_iter=1000, threshold=0.5, all_dist=None, neighborhoods=None, _cal_type="dict",_mode='enrich'):
+def SAFE(graph, node_data, n_iter=1000, nr_threshold=0.5, all_dist=None, neighborhoods=None, _cal_type="dict",_mode='enrich',verbose=1):
     """
     perform SAFE analysis by node permutations
     :param graph:
     :param node_data: node associated values (a dictionary)
     :param n_iter: number of permutations
-    :param threshold: Float in range of [0,100]. The threshold is used to cut path distance with percentiles
+    :param nr_threshold: Float in range of [0,100]. The threshold is used to cut path distance with percentiles for neighbour.
     :param _cal_type: hidden parameters. For a big data with too many features(>=100), calculation with pandas will faster than using dict.
     :return: return dict with keys of nodes ID, values are normalized and multi-test corrected p values.
     """
@@ -112,7 +112,7 @@ def SAFE(graph, node_data, n_iter=1000, threshold=0.5, all_dist=None, neighborho
         print('_mode must be one of [enrich , decline]')
         return
     all_pairs_dist = nodes_pairwise_dist(graph) if all_dist is None else all_dist
-    neighborhoods = nodes_neighborhood(all_pairs_dist, graph, threshold=threshold) if neighborhoods is None else neighborhoods
+    neighborhoods = nodes_neighborhood(all_pairs_dist, graph, threshold=nr_threshold) if neighborhoods is None else neighborhoods
 
     neighborhood_scores = nodes_neighborhood_score(neighborhoods, node_data=node_data, _cal_type=_cal_type)
     if (_cal_type == "auto" and node_data.shape[1] >= 100) or _cal_type == "df":
@@ -120,7 +120,11 @@ def SAFE(graph, node_data, n_iter=1000, threshold=0.5, all_dist=None, neighborho
         neighborhood_enrichments = np.zeros(node_data.shape)
         neighborhood_decline = np.zeros(node_data.shape)
         p_data = node_data.copy()
-        for _ in tqdm(range(n_iter)):
+        if verbose == 0:
+            iter_obj = range(n_iter)
+        else:
+            iter_obj = tqdm(range(n_iter))
+        for _ in iter_obj:
             # permute the node attributes, with the network structure kept
             # inplace change
             p_data = p_data.apply(lambda col: np.random.permutation(col), axis=0)
@@ -135,7 +139,11 @@ def SAFE(graph, node_data, n_iter=1000, threshold=0.5, all_dist=None, neighborho
     elif (_cal_type == "auto" and node_data.shape[1] < 100) or _cal_type == "dict":
         # enrichment (p-value) as a rank in the permutation scores (>=, ordered)
         neighborhood_enrichments = {k: 0 for k in neighborhood_scores.keys()}
-        for _ in range(n_iter):
+        if verbose == 0:
+            iter_obj = range(n_iter)
+        else:
+            iter_obj = tqdm(range(n_iter))
+        for _ in iter_obj:
             # permute the node attributes, with the network structure kept
             p_data = dict(zip(node_data.keys(), np.random.permutation(list(node_data.values()))))
             p_neighborhood_scores = nodes_neighborhood_score(neighborhoods, p_data, _cal_type="dict")
@@ -173,7 +181,7 @@ def SAFE(graph, node_data, n_iter=1000, threshold=0.5, all_dist=None, neighborho
         return safe_scores_decline
 
 
-def SAFE_batch(graph, meta_data, n_iter=1000, threshold=0.5, shuffle_obj="node", _cal_type="auto",_mode='enrich'):
+def SAFE_batch(graph, meta_data, n_iter=1000, nr_threshold=0.5, shuffle_obj="node", _cal_type="auto",_mode='enrich',verbose=1):
     """
     Map sample meta-data to node associated values (using means),
     and perform SAFE batch analysis for multiple features
@@ -183,29 +191,33 @@ def SAFE_batch(graph, meta_data, n_iter=1000, threshold=0.5, shuffle_obj="node",
     :param dict graph:
     :param np.ndarry/pd.DataFrame meta_data:
     :param int n_iter: Permutation times. For some features with skewness values, it should be higher in order to stabilize the resulting SAFE score.
-    :param float threshold: Float in range of [0,100]. The threshold is used to cut path distance with percentiles
+    :param float nr_threshold: Float in range of [0,100]. The threshold is used to cut path distance with percentiles
     :return: return dict ``{feature: {node_ID:p-values(fdr)} }`` .
     """
     all_pairs_dist = nodes_pairwise_dist(graph)
-    neighborhoods = nodes_neighborhood(all_pairs_dist, graph, threshold=threshold)
+    neighborhoods = nodes_neighborhood(all_pairs_dist, graph, threshold=nr_threshold)
 
     if (_cal_type == "auto" and meta_data.shape[1] >= 100) or _cal_type == "df":
         if meta_data.shape[0] != len(graph["nodes"]):
             node_data = construct_node_data(graph, meta_data)
         else:
             node_data = meta_data
-        all_safe_scores = SAFE(graph, node_data, n_iter=n_iter, threshold=threshold, all_dist=all_pairs_dist, neighborhoods=neighborhoods, _cal_type="df",_mode=_mode)
+        all_safe_scores = SAFE(graph, node_data, n_iter=n_iter, nr_threshold=nr_threshold, all_dist=all_pairs_dist, neighborhoods=neighborhoods, _cal_type="df",_mode=_mode,verbose=verbose)
     elif (_cal_type == "auto" and meta_data.shape[1] < 100) or _cal_type == "dict":
         nodes = graph['nodes']
         all_safe_scores = {}
         if "columns" not in dir(meta_data):
             meta_data = pd.DataFrame(meta_data)
-        for feature in tqdm(meta_data.columns):
+        if verbose == 0:
+            iter_obj = meta_data.columns
+        else:
+            iter_obj = tqdm(meta_data.columns)
+        for feature in iter_obj:
             if meta_data.shape[0] != len(graph["nodes"]):
                 node_data = {k: meta_data.iloc[v, meta_data.columns.get_loc(feature)].mean() for k, v in nodes.items()}
             else:
                 node_data = meta_data.to_dict("index")
-            safe_scores = SAFE(graph, node_data, n_iter=n_iter, threshold=threshold, all_dist=all_pairs_dist, neighborhoods=neighborhoods, _cal_type="dict",_mode=_mode)
+            safe_scores = SAFE(graph, node_data, n_iter=n_iter, nr_threshold=nr_threshold, all_dist=all_pairs_dist, neighborhoods=neighborhoods, _cal_type="dict",_mode=_mode,verbose=verbose)
             all_safe_scores[feature] = safe_scores
     else:
         if _cal_type not in ["auto", "df", "dict"]:
@@ -213,7 +225,7 @@ def SAFE_batch(graph, meta_data, n_iter=1000, threshold=0.5, shuffle_obj="node",
     return all_safe_scores
 
 
-def SAFE_single(graph, sample_data, n_iter=1000, threshold=0.5):
+def SAFE_single(graph, sample_data, n_iter=1000, nr_threshold=0.5):
     """
     map sample meta-data to node associated values (using means),
     and perform SAFE analysis for a single feature
@@ -225,11 +237,11 @@ def SAFE_single(graph, sample_data, n_iter=1000, threshold=0.5):
     """
     nodes = graph['nodes']
     node_data = {k: np.mean([sample_data[idx] for idx in v]) for k, v in nodes.items()}
-    safe_scores = SAFE(graph, node_data, n_iter=n_iter, threshold=threshold, _cal_type="dict")
+    safe_scores = SAFE(graph, node_data, n_iter=n_iter, nr_threshold=nr_threshold, _cal_type="dict")
     return safe_scores
 
 
-def get_enriched_nodes(safe_scores, threshold, graph,centroids=False):
+def get_enriched_nodes(safe_scores, threshold, graph, centroids=False):
     """
     get significantly enriched nodes (>= threshold)
     :param safe_scores:

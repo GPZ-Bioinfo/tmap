@@ -189,3 +189,6 @@ def output_Edge_data(graph,filepath,sep='\t'):
             print("Missing key 'association_coeffient' or 'associated_pairs' in graph")
     else:
         print("graph should be a dictionary")
+
+
+# For envfit

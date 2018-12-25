@@ -1,9 +1,10 @@
-from tmap.netx.SAFE import get_enriched_nodes
 import networkx as nx
-from tqdm import tqdm
-import scipy.stats as scs
 import numpy as np
 import pandas as pd
+import scipy.stats as scs
+from tqdm import tqdm
+
+from tmap.netx.SAFE import get_enriched_nodes
 
 
 def get_component_nodes(graph, enriched_nodes):
@@ -89,7 +90,7 @@ def coenrichment_for_nodes(graph, nodes, fea, enriched_centroid, threshold=None,
     metainfo = {}
     global_correlative_feas = {}
     sub_correlative_feas = {}
-    if threshold and safe_scores:
+    if threshold is not None and safe_scores is not None:
         fea_enriched_nodes = set([_ for _ in nodes if safe_scores.get(_,0) >= threshold])
     else:
         fea_enriched_nodes = set(nodes[::])
@@ -294,7 +295,6 @@ def pairwise_coenrichment(graph, safe_scores, n_iter=5000, p_value=0.05, _pre_ca
     :return:
     """
     dist_matrix = pd.DataFrame(data=np.nan, index=safe_scores.keys(), columns=safe_scores.keys())
-    metainfo = {}
     if verbose:
         print('building network...')
         iter_obj = tqdm(safe_scores.keys())
@@ -312,11 +312,12 @@ def pairwise_coenrichment(graph, safe_scores, n_iter=5000, p_value=0.05, _pre_ca
         _global, _meta = coenrichment_for_nodes(graph, enriched_centroid[fea], fea, enriched_centroid, mode='global', _filter=False)
         # _filter to fetch raw fisher-exact test result without any cut-off values.
         for o_f in safe_scores.keys():
-            s1, s2, s3, s4 = metainfo[o_f]
-            oddsratio, pvalue = _global[o_f]
-            if is_enriched(s1, s2, s3, s4):
-                dist_matrix.loc[fea, o_f] = pvalue
-            else:
-                dist_matrix.loc[fea, o_f] = 1
+            if fea != o_f:
+                s1, s2, s3, s4 = _meta[o_f]
+                oddsratio, pvalue = _global[o_f]
+                if is_enriched(s1, s2, s3, s4):
+                    dist_matrix.loc[fea, o_f] = pvalue
+                else:
+                    dist_matrix.loc[fea, o_f] = 1
         dist_matrix.loc[fea, fea] = 0
     return dist_matrix
