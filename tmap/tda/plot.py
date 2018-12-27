@@ -648,39 +648,6 @@ def draw_enriched_plot(graph, safe_score, fea, metainfo, _filter_size=0, **kwarg
     plotly.offline.plot(fig, **kwargs)
 
 
-def draw_coenrichment_ranksum(metainfo, fea, others, node_data, node_metadata, **kwargs):
-    for o_f in others:
-        fig = go.Figure()
-        s1, s2, s3, s4 = metainfo[o_f]
-
-        if o_f in node_data.columns:
-            _data = node_data
-        elif o_f in node_metadata.columns:
-            _data = node_metadata
-        else:
-            print('error feature %s' % o_f)
-            return
-        y1 = _data.loc[s1, o_f]
-        y2 = _data.loc[set.union(s2, s3, s4), o_f]
-
-        if fea in node_data.columns:
-            _data = node_data
-        elif fea in node_metadata.columns:
-            _data = node_metadata
-        _y1 = _data.loc[s1, fea]
-        _y2 = _data.loc[set.union(s2, s3, s4), fea]
-        # ranksum_p1 = scs.ranksums(y1, y2)[1]
-        # ranksum_p2 = scs.ranksums(_y1, _y2)[1]
-
-        datas = []
-        datas.append(go.Box(y=y1, x='%s enriched' % o_f))
-        datas.append(go.Box(y=y2, x='%s non-enriched' % o_f))
-
-        datas.append(go.Box(y=_y1, x='%s enriched' % fea))
-        datas.append(go.Box(y=_y2, x='%s non-enriched' % fea))
-        fig.data += datas
-        plotly.offline.plot(fig, **kwargs)
-
 
 def pair_draw(data, projected_X, fit_result, safe_scores, graph, fea1, fea2=None, n_iter=5000, p_value=0.05,):
     if fea2 is not None:

@@ -6,8 +6,6 @@ from tmap.tda.cover import Cover
 from tmap.tda.plot import show, Color
 from tmap.tda.metric import Metric
 from tmap.tda.utils import optimize_dbscan_eps,cover_ratio
-from tmap.netx.SAFE import SAFE_batch
-from tmap.netx.coenrich import coenrich
 from tmap.test import load_data
 
 from matplotlib.pyplot import title
