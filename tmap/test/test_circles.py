@@ -21,7 +21,5 @@ graph = tm.map(data=X, cover=cover, clusterer=clusterer)
 
 # Step4. Visualization
 color = Color(target=y, dtype="categorical")
-# show(data=X, graph=graph, color=color, fig_size=(10, 10), node_size=15, mode='spring', strength=0.04)
+show(data=X, graph=graph, color=color, fig_size=(10, 10), node_size=15, mode='spring', strength=0.04)
 
-from tmap.tda.plot import vis_progressX
-vis_progressX(graph,projected_X,color=Color(target=y,dtype='categorical',target_by='sample'))

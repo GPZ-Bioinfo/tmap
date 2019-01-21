@@ -69,7 +69,7 @@ def coenrichment_for_nodes(graph, nodes, fea, enriched_centroid, threshold=None,
 
     For global correlative, keys are compared features and values are tuples (oddsratio, pvalue) from fisher-exact test.
     For local correlative, keys are tuples of (index of components, size of components, features) and values are as same as global correlative.
-    The lefted metainfo is a dictionary shared same key to global/local correlative but contains contingency table info.
+    The remaining metainfo is a dictionary shared same key to global/local correlative but contains contingency table info.
 
     :param graph: tmap constructed graph
     :param list nodes: a list of nodes you want to process from specific feature
@@ -282,7 +282,7 @@ def construct_correlative_metadata(fea, global_correlative_feas, sub_correlative
 
 def pairwise_coenrichment(graph, safe_scores, n_iter=5000, p_value=0.05, _pre_cal_enriched=None, verbose=1):
     """
-    Pair-wise calculation for coenrichment of each feature found at safe_scores.
+    Pair-wise calculation for co-enrichment of each feature found at safe_scores.
     If _pre_cal_enriched was given, n_iter and p_value is not useless.
     Or you should modify n_iter and p_value to fit the params you passed to ``SAFE`` algorithm.
 

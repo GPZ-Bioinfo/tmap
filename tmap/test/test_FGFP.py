@@ -39,7 +39,7 @@ print('Graph covers %.2f percentage of samples.' % cover_ratio(graph,X))
 # target_feature = 'Prevotella'
 target_feature = 'Bacteroides'
 n_iter = 1000
-safe_scores = SAFE_batch(graph, meta_data=X, n_iter=n_iter, threshold=0.05)
+safe_scores = SAFE_batch(graph, meta_data=X, n_iter=n_iter)
 target_safe_score = safe_scores[target_feature]
 
 # target_safe_score = SAFE_single(graph, X.loc[:, target_feature], n_iter=1000, threshold=0.05)
@@ -56,5 +56,3 @@ show(data=X, graph=graph, color=color, fig_size=(10, 10), node_size=15, mode='sp
 
 safe_summary = get_SAFE_summary(graph=graph, meta_data=X, safe_scores=safe_scores,
                                 n_iter_value=n_iter, p_value=0.01)
-safe_summary.to_csv('/home/liaoth/data2/project/TDA_paper/compare_/genus_SAFE_v2.csv', index=True)
-safe_summary.to_csv(os.path.join(os.path.dirname(__file__),'../example/FGFP_SAFE_ranking_genus_1000.csv'), index=True)

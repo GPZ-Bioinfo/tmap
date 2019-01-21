@@ -24,5 +24,5 @@ graph = tm.map(data=MinMaxScaler().fit_transform(X), cover=cover, clusterer=clus
 
 # Step4. Visualization
 color = Color(target=y, dtype="categorical")
-show(data=X, graph=graph, color=color, fig_size=(10, 10), node_size=10, mode='spring', strength=0.3)
+show(data=X, graph=graph, color=color, fig_size=(10, 10), node_size=10, mode='spring', strength=0.2)
 

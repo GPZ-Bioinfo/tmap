@@ -192,10 +192,11 @@ class Color(object):
             sample_colors = [self._get_hex_color(idx) for idx in _sample_color_idx]
         else:
             sample_colors = [self._get_hex_color(target2idx[label]) for label in labels]
+            cat2colors = dict(zip(labels, sample_colors))
         if self.dtype == "numerical":
             return sample_colors
         else:
-            return sample_colors, target2idx
+            return sample_colors, cat2colors
 
 
 def show(data, graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2, mode=None, strength=None):
@@ -390,18 +391,23 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
     sizes = graph["node_sizes"][:, 0]
     sample_names = np.array(graph.get("sample_names", []))
     minmax_scaler = MinMaxScaler(feature_range=(min_size, max_size))
+    mms_color = MinMaxScaler(feature_range=[0, 1])
     if color:
         color_map, target2colors = color.get_colors(graph["nodes"])
+        target_v = mms_color.fit_transform(target2colors[0]).ravel()
+        target_v_raw = target2colors[0].ravel()
     else:
-        color = Color([0] * projected_X.shape[0])
+        color = Color([0] * projected_X.shape[0], target_by='node', dtype='numerical')
+        target_v = None
 
     if color.target_by == "node":
         samples_colors = "red"
     elif color.dtype == 'categorical':
+        # above statement return True, it must have target2colors already. WARNING could be ignore.
         samples_colors, cat2colors = color.get_sample_colors()
+        legend_indicator = np.array(color.label_encoder.inverse_transform(target2colors[0].reshape(-1, ).astype(int)))
     else:
         samples_colors = color.get_sample_colors()
-
     # For calculating the dynamic process. It need to be aligned first.
     # reconstructing the ori_MDS into the samples_pos
     # reconstructing the node_pos into the center_pos
@@ -453,8 +459,17 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
     if _color_SAFE is not None:
         safe_color, safe_t2c = _color_SAFE.get_colors(graph["nodes"])
         node_colors = [safe_color[_] for _ in range(len(nodes))]
+        target_v = mms_color.fit_transform(safe_t2c[0]).ravel()
+        target_v_raw = safe_t2c[0].ravel()
     else:
         node_colors = [color_map[_] for _ in range(len(nodes))]
+
+    nv2c = dict(zip(target_v, node_colors))  # A dict which includes values of node to color
+    colorscale = []
+    for _ in sorted(set(target_v)):
+        colorscale.append([_, nv2c[_]])
+    colorscale[-1][0] = 1  # the last value must be 1
+    colorscale[0][0] = 0  # the first value must be 0
 
     node_line = go.Scatter(
         # ordination line
@@ -466,7 +481,7 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
         line=dict(width=1),
         showlegend=False,
         mode="lines")
-    node_position = go.Scatter(
+    node_marker = go.Scatter(
         # node position
         visible=False,
         x=node_pos[:, 0],
@@ -478,7 +493,7 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
                     opacity=1),
         showlegend=False,
         mode="markers")
-    samples_position = go.Scatter(
+    sample_markers = go.Scatter(
         visible=True,
         x=ori_MDS[:, 0],
         y=ori_MDS[:, 1],
@@ -493,15 +508,38 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
     if simple:
         fig = plotly.tools.make_subplots(1, 1)
         node_line['visible'] = True
-        node_position['visible'] = True
+        node_marker['visible'] = True
         fig.append_trace(node_line, 1, 1)
-        fig.append_trace(node_position, 1, 1)
+        if color.dtype != 'categorical':
+            if target_v is not None:
+                node_marker['marker']['color'] = target_v_raw
+                node_marker['marker']['colorscale'] = colorscale
+                node_marker['marker']['showscale'] = True
+            fig.append_trace(node_marker, 1, 1)
+        else:
+            minmax_scaler.fit(np.array([sizes[_] for _ in range(len(nodes))]).reshape(-1, 1))
+            for cat in np.unique(legend_indicator):
+                node_marker = go.Scatter(
+                    # node position
+                    visible=True,
+                    x=node_pos[legend_indicator == cat, 0],
+                    y=node_pos[legend_indicator == cat, 1],
+                    text=np.array(node_text)[legend_indicator == cat],
+                    hoverinfo="text",
+                    marker=dict(color=cat2colors[cat],
+                                size=minmax_scaler.transform(np.array([sizes[_] for _ in np.arange(len(nodes))[legend_indicator == cat]]).reshape(-1, 1)),
+                                opacity=1),
+                    name=cat,
+                    showlegend=True,
+                    mode="markers")
+                fig.append_trace(node_marker, 1, 1)
+
     else:
         fig = plotly.tools.make_subplots(rows=2, cols=2, specs=[[{'rowspan': 2}, {}], [None, {}]],
                                          # subplot_titles=('Mapping process', 'Original projection', 'tmap graph')
                                          )
         # original place or ordination place
-        fig.append_trace(samples_position, 1, 1)
+        fig.append_trace(sample_markers, 1, 1)
 
         # dynamic process to generate 5 binning positions
         n_step = 5
@@ -521,13 +559,13 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
         # Order is important, do not change the order !!!
         # There are the last 5 should be visible at any time
         fig.append_trace(node_line, 1, 1)
-        fig.append_trace(node_position, 1, 1)
+        fig.append_trace(node_marker, 1, 1)
         node_line['visible'] = True
-        node_position['visible'] = True
-        samples_position['visible'] = True
+        node_marker['visible'] = True
+        sample_markers['visible'] = True
         fig.append_trace(node_line, 2, 2)
-        fig.append_trace(node_position, 2, 2)
-        fig.append_trace(samples_position, 1, 2)
+        fig.append_trace(node_marker, 2, 2)
+        fig.append_trace(sample_markers, 1, 2)
         ############################################################
         steps = []
         for i in range(n_step + 1):
@@ -648,15 +686,14 @@ def draw_enriched_plot(graph, safe_score, fea, metainfo, _filter_size=0, **kwarg
     plotly.offline.plot(fig, **kwargs)
 
 
-
-def pair_draw(data, projected_X, fit_result, safe_scores, graph, fea1, fea2=None, n_iter=5000, p_value=0.05,):
+def pair_draw(data, projected_X, fit_result, safe_scores, graph, fea1, fea2=None, n_iter=5000, p_value=0.05, ):
     if fea2 is not None:
         col = 2
         subtitles = ['%s ordination' % fea1,
                      '%s Tmap' % fea1,
                      '%s ordination' % fea2,
                      '%s Tmap' % fea2]
-        feas = [fea1,fea2]
+        feas = [fea1, fea2]
     else:
         col = 1
         subtitles = ['%s ordination' % fea1,
@@ -687,22 +724,21 @@ def pair_draw(data, projected_X, fit_result, safe_scores, graph, fea1, fea2=None
                                         mode='lines+text', showlegend=False,
                                         text=['', round(fit_result.loc[fea, 'r2'], 4)]), row, col)
 
-
     min_p_value = 1.0 / (n_iter + 1.0)
     threshold = np.log10(p_value) / np.log10(min_p_value)
     enriched_nodes = get_enriched_nodes(safe_scores, threshold, graph)
 
     fig_container = []
-    for idx,fea in enumerate(feas):
-        draw_ord_and_tmap(fig, projected_X, fit_result, fea, idx+1, 1, data)
+    for idx, fea in enumerate(feas):
+        draw_ord_and_tmap(fig, projected_X, fit_result, fea, idx + 1, 1, data)
         cache = {node: safe_scores[fea][node] if node in enriched_nodes[fea] else 0 for node in safe_scores[fea].keys()}
         f = vis_progressX(graph, projected_X, color=Color(cache, target_by='node'), mode='obj', simple=True)
         fig_container.append(f)
 
-    for idx,f in enumerate(fig_container):
+    for idx, f in enumerate(fig_container):
         for _ in f.data:
             fig.append_trace(_,
-                             idx+1,
+                             idx + 1,
                              2)
 
     fig.layout.width = 2000
@@ -722,5 +758,3 @@ def pair_draw(data, projected_X, fit_result, safe_scores, graph, fea1, fea2=None
     return fig
     # plotly.offline.plot(fig, auto_open=False, **kwargs)
     # plotly.offline.iplot(fig)
-
-

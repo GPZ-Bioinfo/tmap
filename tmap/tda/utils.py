@@ -99,6 +99,7 @@ def safe_scores_IO(arg,output_path=None,mode='w'):
         return safe_scores
     elif mode == 'r':
         safe_scores = pd.read_csv(arg,index_col=0)
+        safe_scores = safe_scores.to_dict('index')
         return safe_scores
 
 def read_graph(path):
