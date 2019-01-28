@@ -175,28 +175,27 @@ class Color(object):
         :return: nodes colors with keys, and the color map of the target values
         :rtype: tuple (first is a dict node_ID:node_color, second is a tuple (node_ID_index,node_color))
         """
-        if self.target_by != "sample":
-            raise IOError
+        cat2colors = {}
 
-        if self.dtype == "numerical":
-            _sample_color_idx = self._rescale_target(self.target)
-        else:
-            labels = self.label_encoder.inverse_transform(self.target)
-            _sample_color_idx = np.arange(0.0, 1.1, 1.0 / (len(set(labels)) - 1))  # add 1 into idx, so it is 1.1 which is little bigger than 1.
-            target2idx = dict(zip(sorted(set(labels)), _sample_color_idx))
+        if self.target_by == "node":
+            sample_colors = ['red' for _ in self.target]
 
-        if type(cmap) == dict and self.dtype == 'categorical':
-            sample_colors = [cmap.get(_, 'blue') for _ in labels]
-            # implement for custom cmap for categorical values.
-        elif self.dtype == "numerical":
-            sample_colors = [self._get_hex_color(idx) for idx in _sample_color_idx]
         else:
-            sample_colors = [self._get_hex_color(target2idx[label]) for label in labels]
-            cat2colors = dict(zip(labels, sample_colors))
-        if self.dtype == "numerical":
-            return sample_colors
-        else:
-            return sample_colors, cat2colors
+            if self.dtype == "numerical":
+                _sample_color_idx = self._rescale_target(self.target)
+                sample_colors = [self._get_hex_color(idx) for idx in _sample_color_idx]
+            else:
+                labels = self.label_encoder.inverse_transform(self.target)
+                _sample_color_idx = np.arange(0.0, 1.1, 1.0 / (len(set(labels)) - 1))  # add 1 into idx, so it is 1.1 which is little bigger than 1.
+                target2idx = dict(zip(sorted(set(labels)), _sample_color_idx))
+                sample_colors = [self._get_hex_color(target2idx[label]) for label in labels]
+                cat2colors = dict(zip(labels, sample_colors))
+
+            if type(cmap) == dict and self.dtype == 'categorical':
+                sample_colors = [cmap.get(_, 'blue') for _ in labels]
+                # todo: implement for custom cmap for categorical values.
+
+        return sample_colors, cat2colors
 
 
 def show(data, graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2, mode=None, strength=None):
@@ -239,7 +238,6 @@ def show(data, graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2,
 
     # if there are indicated color with ``Color``, it need to add some legend for given color.
     if isinstance(color, Color):
-
         if color.dtype == "categorical":
             fig = plt.figure(figsize=fig_size)
             ax = fig.add_subplot(1, 1, 1)
@@ -293,7 +291,9 @@ def show(data, graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2,
                 cb.ax.text(0.5, 1.02, '{:.2f}'.format(max(legend_values)), ha='center', va='bottom', weight='bold')
             else:
                 cb.ax.text(0.5, 1.02, '{:.2e}'.format(max(legend_values)), ha='center', va='bottom', weight='bold')
-
+    else:
+        fig = plt.figure(figsize=fig_size)
+        ax = fig.add_subplot(1, 1, 1)
     if mode == 'spring':
         pos = {}
         # the projection space is one dimensional
@@ -361,6 +361,11 @@ def get_arrows(graph, projected_X, safe_score, max_length=1, pvalue=0.05):
     return scaled_arrow_df
 
 
+def tm_plot(graph, projected_X, filename, mode='file', include_plotlyjs='cdn', color=None, _color_SAFE=None, min_size=10, max_size=40, **kwargs):
+    vis_progressX(graph, projected_X, simple=True, filename=filename, include_plotlyjs=include_plotlyjs, color=color, _color_SAFE=_color_SAFE, min_size=min_size, max_size=max_size,
+                  mode=mode, **kwargs)
+
+
 def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _color_SAFE=None, min_size=10, max_size=40, **kwargs):
     """
     For dynamic visualizing tmap construction process, it performs a interactive graph based on `plotly` with a slider to present the process from ordination to graph step by step. Currently, it doesn't provide any API for overriding the number of step from ordination to graph. It may be implemented at the future.
@@ -370,10 +375,12 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
     This visualized function is mainly based on plotly which is a interactive Python graphing library. The params mode is trying to provide multiple type of return for different purpose. There are three different modes you can choose including "file" which return a html created by plotly, "obj" which return a reusable python dict object and "web" which normally used at notebook and make inline visualization possible.
 
     The color part of this function has a little bit complex because of the multiple sub-figures. Currently, it use the ``tmap.tda.plot.Color`` class to auto generate color with given array. More detailed about how to auto generate color could be reviewed at the annotation of ``tmap.tda.plot.Color``.
-    In this function,  there are two kinds of color need to implement.
-        First, all color and its showing text values of samples points should be followed by given color params. The color could be **any array** which represents some measurement of Nodes or Samples. **It doesn't have to be SAFE score. **
-        Second, The ``_color_SAFE`` param should be a ``Color`` with a nodes-length array, which is normally a SAFE score.
 
+    In this function,  there are two kinds of color need to implement.
+
+        * First, all color and its showing text values of samples points should be followed by given color params. The color could be **any array** which represents some measurement of Nodes or Samples. **It doesn't have to be SAFE score**.
+
+        * Second, The ``_color_SAFE`` param should be a ``Color`` with a nodes-length array, which is normally a SAFE score.
 
     :param graph:
     :param np.array projected_X:
@@ -381,7 +388,6 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
     :param bool simple:
     :param color:
     :param _color_SAFE:
-
     :param kwargs:
     :return:
     """
@@ -389,25 +395,27 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
     ori_MDS = projected_X
     nodes = graph["nodes"]
     sizes = graph["node_sizes"][:, 0]
-    sample_names = np.array(graph.get("sample_names", []))
+    sample_names = np.array(graph.get("sample_names", [])).astype(str)
     minmax_scaler = MinMaxScaler(feature_range=(min_size, max_size))
     mms_color = MinMaxScaler(feature_range=[0, 1])
-    if color:
+
+    # init some empty values if color wasn't given
+    target_v_raw = ['' for _ in nodes]
+    target_v = [0 for _ in nodes]
+    samples_colors = ['red' for _ in sample_names]
+
+    if color is not None:
         color_map, target2colors = color.get_colors(graph["nodes"])
         target_v = mms_color.fit_transform(target2colors[0]).ravel()
         target_v_raw = target2colors[0].ravel()
-    else:
-        color = Color([0] * projected_X.shape[0], target_by='node', dtype='numerical')
-        target_v = None
 
-    if color.target_by == "node":
-        samples_colors = "red"
-    elif color.dtype == 'categorical':
-        # above statement return True, it must have target2colors already. WARNING could be ignore.
         samples_colors, cat2colors = color.get_sample_colors()
-        legend_indicator = np.array(color.label_encoder.inverse_transform(target2colors[0].reshape(-1, ).astype(int)))
+
+        if color.dtype == 'categorical':
+            legend_names = np.array(color.label_encoder.inverse_transform(target2colors[0].reshape(-1, ).astype(int)))
     else:
-        samples_colors = color.get_sample_colors()
+        color_map = {}
+
     # For calculating the dynamic process. It need to be aligned first.
     # reconstructing the ori_MDS into the samples_pos
     # reconstructing the node_pos into the center_pos
@@ -419,8 +427,8 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
         point_tmp.append(ori_MDS[nodes[n], :])
         center_tmp.append(np.concatenate([node_pos[[n], :]] * len(nodes[n]), axis=0))
         text_tmp.append(sample_names[nodes[n]])
-        if color:
-            samples_colors_dynamic += list(np.repeat(color_map[n], len(nodes[n])))
+        if color is not None:
+            samples_colors_dynamic += list(np.repeat(color_map.get(n, 'blue'), len(nodes[n])))
         else:
             samples_colors_dynamic.append("blue")
     samples_pos = np.concatenate(point_tmp, axis=0)
@@ -440,29 +448,31 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
                node_pos[edge[1], 1],
                None]
 
+    # if there are _color_SAFE, it will present two kinds of color.
+    # one is base on original data, one is transformed-SAFE data. Use the second one.
+    if _color_SAFE is not None:
+        safe_color, safe_t2c = _color_SAFE.get_colors(graph["nodes"])
+        # former is a dict which key is node id and values is node color
+        # second is a tuple (node values, node color)
+        node_colors = [safe_color[_] for _ in range(len(nodes))]
+        target_v = mms_color.fit_transform(safe_t2c[0]).ravel()  # minmaxscaled node values
+        target_v_raw = safe_t2c[0].ravel()  # raw node values
+    else:
+        node_colors = [color_map.get(_, 'blue') for _ in range(len(nodes))]
+
     # prepare node & samples text
-    node_vis_vals = [np.mean(color.target[nodes[n]]) if color.target_by == "sample" else str(color.target[n]) for n in graph["nodes"]]
+    node_vis_vals = target_v_raw  # todo: test categorical color passed.
     # values output from color.target. It need to apply mean function for a samples-length color.target.
     node_text = [str(n) +
                  # node id
                  "<Br>vals:%s<Br>" % str(v) +
                  # node values output from color.target.
-                 '<Br>'.join(np.array(graph.get("sample_names")).astype(str)[graph["nodes"][n]]) for n, v in
+                 '<Br>'.join(sample_names[nodes[n]]) for n, v in
                  # samples name concated with line break.
-                 zip(graph["nodes"],
+                 zip(nodes,
                      node_vis_vals)]
     ### samples text
-    samples_text = ['sample ID:%s' % _ for _ in graph.get("sample_names", [])]
-
-    # if there are _color_SAFE, it will present two kinds of color.
-    # one is base on original data, one is transformed-SAFE data.
-    if _color_SAFE is not None:
-        safe_color, safe_t2c = _color_SAFE.get_colors(graph["nodes"])
-        node_colors = [safe_color[_] for _ in range(len(nodes))]
-        target_v = mms_color.fit_transform(safe_t2c[0]).ravel()
-        target_v_raw = safe_t2c[0].ravel()
-    else:
-        node_colors = [color_map[_] for _ in range(len(nodes))]
+    samples_text = ['sample ID:%s' % _ for _ in sample_names]
 
     nv2c = dict(zip(target_v, node_colors))  # A dict which includes values of node to color
     colorscale = []
@@ -502,38 +512,39 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
         hoverinfo="text",
         showlegend=False,
         mode="markers")
-    ### After all prepared work have been finished.
+    # After all prepared work have been finished.
     # Append all traces instance into fig
-
     if simple:
         fig = plotly.tools.make_subplots(1, 1)
         node_line['visible'] = True
         node_marker['visible'] = True
         fig.append_trace(node_line, 1, 1)
-        if color.dtype != 'categorical':
-            if target_v is not None:
+
+        if color is not None:
+            if color.dtype == 'numerical':
                 node_marker['marker']['color'] = target_v_raw
                 node_marker['marker']['colorscale'] = colorscale
                 node_marker['marker']['showscale'] = True
-            fig.append_trace(node_marker, 1, 1)
-        else:
-            minmax_scaler.fit(np.array([sizes[_] for _ in range(len(nodes))]).reshape(-1, 1))
-            for cat in np.unique(legend_indicator):
-                node_marker = go.Scatter(
-                    # node position
-                    visible=True,
-                    x=node_pos[legend_indicator == cat, 0],
-                    y=node_pos[legend_indicator == cat, 1],
-                    text=np.array(node_text)[legend_indicator == cat],
-                    hoverinfo="text",
-                    marker=dict(color=cat2colors[cat],
-                                size=minmax_scaler.transform(np.array([sizes[_] for _ in np.arange(len(nodes))[legend_indicator == cat]]).reshape(-1, 1)),
-                                opacity=1),
-                    name=cat,
-                    showlegend=True,
-                    mode="markers")
                 fig.append_trace(node_marker, 1, 1)
-
+            else:
+                minmax_scaler.fit(np.array([sizes[_] for _ in range(len(nodes))]).reshape(-1, 1))
+                for cat in np.unique(legend_names):
+                    node_marker = go.Scatter(
+                        # node position
+                        visible=True,
+                        x=node_pos[legend_names == cat, 0],
+                        y=node_pos[legend_names == cat, 1],
+                        text=np.array(node_text)[legend_names == cat],
+                        hoverinfo="text",
+                        marker=dict(color=cat2colors[cat],
+                                    size=minmax_scaler.transform(np.array([sizes[_] for _ in np.arange(len(nodes))[legend_names == cat]]).reshape(-1, 1)),
+                                    opacity=1),
+                        name=cat,
+                        showlegend=True,
+                        mode="markers")
+                    fig.append_trace(node_marker, 1, 1)
+        else:
+            fig.append_trace(node_marker, 1, 1)
     else:
         fig = plotly.tools.make_subplots(rows=2, cols=2, specs=[[{'rowspan': 2}, {}], [None, {}]],
                                          # subplot_titles=('Mapping process', 'Original projection', 'tmap graph')

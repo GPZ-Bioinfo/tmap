@@ -1,5 +1,6 @@
 ####
 # test pipelines which includes SHAP and xgboost.
+# incoming pipeline which doesn't implement yet.
 # lth 2018-12-10
 ####
 
@@ -27,7 +28,8 @@ from tmap.tda.utils import optimize_dbscan_eps, cover_ratio, optimal_r
 
 global_verbose = 1
 
-def generate_graph(input_data, dis, _eu_dm=None, eps_threshold=95, overlap_params=0.75, min_samples=3,resolution_params="auto", filter_=filter.PCOA):
+
+def generate_graph(input_data, dis, _eu_dm=None, eps_threshold=95, overlap_params=0.75, min_samples=3, resolution_params="auto", filter_=filter.PCOA):
     tm = mapper.Mapper(verbose=1)
     # TDA Step2. Projection
     t1 = time.time()

@@ -39,25 +39,33 @@ def is_enriched(s1, s2, s3, s4):
         return False
 
 
-def coenrichment_for_nodes(graph, nodes, fea, enriched_centroid, threshold=None, safe_scores=None, _filter=True, mode='both'):
+def coenrichment_for_nodes(graph, nodes, fea, enriched_centroid, SAFE_pvalue=None, safe_scores=None, _filter=True, mode='both'):
     """
     Coenrichment main function
     With given feature and its enriched nodes, we could construct a contingency table when we comparing to other feature and its enriched nodes.
     For statistical test association between different features, fisher-exact test was applied to each constructed contingency table. Fisher-exact test only consider the association between two classifications instead of the ratio. For coenrichment, we also implement a accessory function called ``is_enriched`` to further judge that if the ratio of enrichment is bigger than the non-enrichement.
 
     Besides the global co-enrichment, several local enrichment were observed. With ``networkx`` algorithm for finding component, we could extract each local enrichment nodes from global enrichment.
+
     Because of the complex combination between comparison of local enrichment, two different contingency table was constructed.
 
     The contingency table which compare different enriched nodes among components and enriched or non-enriched nodes of other features shown below.
 
-                                        fea this comp enriched nodes, fea other comp enriched nodes
-                    o_f_enriched_nodes           s1                          s2
-                    o_f_non-enriched_nodes       s3                          s4
+    ======================== ================================= =================================
+    fea                      fea this comp enriched nodes      fea other comp enriched nodes
+    ======================== ================================= =================================
+    o_f_enriched_nodes       s1                                s2
+    o_f_non-enriched_nodes   s3                                s4
+    ======================== ================================= =================================
 
     The other contingency table which compare enriched nodes within specific component or non-enriched nodes and enriched or non-enriched nodes of other features shown below.
-                                        fea this comp enriched nodes, fea non-enriched nodes
-                    o_f_enriched_nodes           s1                          s2
-                    o_f_non-enriched_nodes       s3                          s4
+
+    ======================== ================================= =================================
+    fea                      fea this comp enriched nodes      fea non-enriched nodes
+    ======================== ================================= =================================
+    o_f_enriched_nodes       s1                                s2
+    o_f_non-enriched_nodes   s3                                s4
+    ======================== ================================= =================================
 
     For convenient calculation, three different mode [both|global|local] could be choose.
 
@@ -90,8 +98,8 @@ def coenrichment_for_nodes(graph, nodes, fea, enriched_centroid, threshold=None,
     metainfo = {}
     global_correlative_feas = {}
     sub_correlative_feas = {}
-    if threshold is not None and safe_scores is not None:
-        fea_enriched_nodes = set([_ for _ in nodes if safe_scores.get(_,0) >= threshold])
+    if SAFE_pvalue is not None and safe_scores is not None:
+        fea_enriched_nodes = set([_ for _ in nodes if safe_scores.get(_, 0) >= SAFE_pvalue])
     else:
         fea_enriched_nodes = set(nodes[::])
     fea_nonenriched_nodes = total_nodes.difference(fea_enriched_nodes)
@@ -303,8 +311,8 @@ def pairwise_coenrichment(graph, safe_scores, n_iter=5000, p_value=0.05, _pre_ca
 
     if not _pre_cal_enriched:
         min_p_value = 1.0 / (n_iter + 1.0)
-        threshold = np.log10(p_value) / np.log10(min_p_value)
-        enriched_centroid, enriched_nodes = get_enriched_nodes(pd.DataFrame.from_dict(safe_scores, orient='index'), threshold, graph, centroids=True)
+        SAFE_pvalue = np.log10(p_value) / np.log10(min_p_value)
+        enriched_centroid, enriched_nodes = get_enriched_nodes(pd.DataFrame.from_dict(safe_scores, orient='index'), SAFE_pvalue, graph, centroids=True)
     else:
         enriched_centroid = _pre_cal_enriched
 
