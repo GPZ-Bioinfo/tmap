@@ -4,7 +4,7 @@ from sklearn.cluster import DBSCAN
 from tmap.tda import mapper, filter
 from tmap.tda.cover import Cover
 from tmap.tda.plot import show, Color
-
+from tmap.tda.utils import cover_ratio
 
 iris = datasets.load_iris()
 X = iris.data
@@ -21,7 +21,7 @@ projected_X = tm.filter(X, lens=lens)
 clusterer = DBSCAN(eps=0.75, min_samples=1)
 cover = Cover(projected_data=MinMaxScaler().fit_transform(projected_X), resolution=20, overlap=0.75)
 graph = tm.map(data=StandardScaler().fit_transform(X), cover=cover, clusterer=clusterer)
-
+print(cover_ratio(graph, X))
 # Step4. Visualization
 color = Color(target=y, dtype="categorical")
-show(data=X, graph=graph, color=color, fig_size=(10, 10), node_size=15, mode='spring', strength=0.04)
+show(data=X, graph=graph, color=color, fig_size=(10, 10), node_size=15, mode='spring', strength=0.1)

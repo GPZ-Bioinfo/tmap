@@ -16,11 +16,12 @@ setup(name='tmap',
                         'tqdm',
                         'scikit-learn>=0.19.1',
                         'matplotlib>=2.2.2',
-                        'networkx==1.11',
+                        'networkx>=2.1',
                         'pandas>=0.23.0',
                         'numpy>=1.10.4',
                         'scipy',
-
+			'matplotlib!=3.0.0rc2',
+#                        'scikit-bio>=0.5.2'
                         ],
       zip_safe=False,
       extras_require={'alldeps': ('numpy>=1.10.4', 'scipy',)}

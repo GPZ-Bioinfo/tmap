@@ -56,7 +56,6 @@ class Cover(object):
         hypercubes = np.zeros((n_bins, self.n_points), dtype=bool)
         bounds_with_overlap = []
         bounds_without_overlap = []
-        # todo: improve the iterations?
         for i, bin in enumerate(bins):
             lower_bound = self.floor + bin * self.chunk_width
             upper_bound = lower_bound + self.chunk_width + self.overlap_width
