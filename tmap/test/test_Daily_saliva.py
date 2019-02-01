@@ -33,10 +33,14 @@ print('Graph covers %.2f percentage of samples.' % cover_ratio(graph,X))
 
 
 target_feature = 'COLLECTION_DAY'
+
 color = Color(target=metadata.loc[:, target_feature], dtype="numerical", target_by="sample")
-show(data=X, graph=graph, color=color, fig_size=(10, 10), node_size=15, mode='spring', strength=0.03)
+show(data=X, graph=graph, color=color, fig_size=(10, 10), node_size=15, mode='spring', strength=0.03
+     )
 
 
 target_feature = 'Bacteroides'
 color = Color(target=X.loc[:, target_feature], dtype="numerical", target_by="sample")
-show(data=X, graph=graph, color=color, fig_size=(10, 10), node_size=15, mode='spring', strength=0.03)
+show(data=X, graph=graph, color=color, fig_size=(10, 10), node_size=15, mode='spring', strength=0.03
+     )
+
