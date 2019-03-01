@@ -1,7 +1,7 @@
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn import datasets
 from sklearn.cluster import DBSCAN
-from tmap.tda import mapper, filter
+from tmap.tda import mapper, Filter
 from tmap.tda.cover import Cover
 from tmap.tda.plot import show, Color
 from tmap.tda.utils import cover_ratio
@@ -14,7 +14,7 @@ y = iris.target
 tm = mapper.Mapper(verbose=1)
 
 # Step2. Projection
-lens = [filter.MDS(components=[0, 1],random_state=100)]
+lens = [Filter.MDS(components=[0, 1], random_state=100)]
 projected_X = tm.filter(X, lens=lens)
 
 # Step3. Covering, clustering & mapping

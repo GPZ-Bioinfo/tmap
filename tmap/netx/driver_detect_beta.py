@@ -20,7 +20,7 @@ from sklearn.metrics import r2_score, auc, roc_curve, average_precision_score
 from sklearn.preprocessing import MinMaxScaler
 from tqdm import tqdm
 
-from tmap.tda import mapper, filter
+from tmap.tda import mapper, Filter
 from tmap.tda.cover import Cover
 from tmap.tda.metric import Metric
 from tmap.tda.utils import construct_node_data
@@ -29,7 +29,7 @@ from tmap.tda.utils import optimize_dbscan_eps, cover_ratio, optimal_r
 global_verbose = 1
 
 
-def generate_graph(input_data, dis, _eu_dm=None, eps_threshold=95, overlap_params=0.75, min_samples=3, resolution_params="auto", filter_=filter.PCOA):
+def generate_graph(input_data, dis, _eu_dm=None, eps_threshold=95, overlap_params=0.75, min_samples=3, resolution_params="auto", filter_=Filter.PCOA):
     tm = mapper.Mapper(verbose=1)
     # TDA Step2. Projection
     t1 = time.time()
@@ -228,7 +228,7 @@ def full_pipelines(input_data,
                    eps_threshold=95,
                    overlap_params=0.75,
                    resolution_params="auto",
-                   filter_=filter.PCOA):
+                   filter_=Filter.PCOA):
     if type(metric) == str:
         dis = squareform(pdist(input_data, metric))
     elif "shape" in dir(metric):
