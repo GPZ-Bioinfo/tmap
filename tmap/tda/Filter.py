@@ -12,6 +12,7 @@ _METRIC_BUILT_IN = ["braycurtis", "canberra", "chebyshev", "cityblock", "correla
                     "russellrao", "seuclidean", "sokalmichener", "sokalsneath", "sqeuclidean", "yule"]
 
 
+
 class Filters(object):
     """
     filters for TDA Mapper, to project data points onto a low dimensional space
@@ -231,3 +232,12 @@ class UMAP(Filters):
             data = self.metric.fit_transform(data)
         projected_data = self.umap.fit_transform(data)
         return projected_data[:, self.components]
+
+_filter_dict = {'L1Centrality':L1Centrality,
+ 'LinfCentrality':LinfCentrality,
+ 'GaussianDensity':GaussianDensity,
+ 'PCA':PCA,
+ 'TSNE':TSNE,
+ 'MDS':MDS,
+ 'PCOA':PCOA,
+ 'UMAP':UMAP}
