@@ -22,7 +22,7 @@ setup(name='tmap',
                         'scipy',
 			            'matplotlib!=3.0.0rc2',
                         'umap-learn',
-                        'scikit-bio>=0.5.2',
+#                        'scikit-bio>=0.5.2',
 			'plotly'
                         ],
       zip_safe=False,
