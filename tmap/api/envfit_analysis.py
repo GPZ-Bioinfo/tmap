@@ -3,7 +3,7 @@ from rpy2.robjects.packages import importr
 import pandas as pd
 import numpy as np
 import time,argparse,os
-from tmap.api.general import data_parser,write_data,randomString,logger
+from tmap.api.general import data_parser,write_data,randomString,logger,preprocess_metadata_beta
 from scipy.spatial.distance import squareform, pdist
 
 importr("vegan")
@@ -21,9 +21,11 @@ def prepare(input,metadata,dis,metric,filetype):
     else:
         dis = data_parser(dis,ft=filetype)
     metadata = data_parser(metadata,ft=filetype)
+    # preprocess metadata
+    metadata = preprocess_metadata_beta(data,metadata,verbose=1)
 
     dis.to_csv(_static_dis, sep=',', index=1)
-    data.to_csv(_static_dis,sep=',',index=1)
+    data.to_csv(_static_data,sep=',',index=1)
     metadata.to_csv(_static_metadata,sep=',',index=1)
 
 def envfit_metadata(data_path ,metadata_path ,dist_path,n_iter=500,return_ord = False):
@@ -79,9 +81,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-I", "--input", help="input data, normally formatted as row(sample) and columns(OTU/sOTU/other features)",
                         required=True)
-    parser.add_argument("-M", "--metadata", nargs='*', help="Metadata files need to calculate the SAFE score.",
+    parser.add_argument("-M", "--metadata", help="Metadata files need to calculate the envfit.",
                         required=True)
-    parser.add_argument("-O", "--output", help="Output File. Generated Network with its metadata.(python3's pickle format)",
+    parser.add_argument("-O", "--output", help="Prefix of output File. Envfit output result",
                         required=True)
     parser.add_argument("-d", "--dis", help="Distance matrix of input file. (Optional),If you doesn't provide, it will automatically \
                                              calculate distance matrix according to the file you provide and the metric you assign.",
