@@ -3,15 +3,15 @@ from rpy2.robjects.packages import importr
 import pandas as pd
 import numpy as np
 import time,argparse,os
-from tmap.api.general import data_parser,write_data,randomString,logger,preprocess_metadata_beta
+from tmap.api.general import data_parser,write_data,randomString,logger,process_metadata_beta
 from scipy.spatial.distance import squareform, pdist
 
 importr("vegan")
 
 random_str = randomString(10)
-_static_data = './%s.envfit.data' % random_str
-_static_dis = './%s.envfit.dis'% random_str
-_static_metadata = './%s.envfit.metadata'% random_str
+_static_data = '{output}/%s.envfit.data' % random_str
+_static_dis = '{output}/%s.envfit.dis'% random_str
+_static_metadata = '{output}/%s.envfit.metadata'% random_str
 
 def prepare(input,metadata,dis,metric,filetype):
     data = data_parser(input, ft=filetype)
@@ -23,10 +23,11 @@ def prepare(input,metadata,dis,metric,filetype):
     metadata = data_parser(metadata,ft=filetype)
     # preprocess metadata
     metadata = preprocess_metadata_beta(data,metadata,verbose=1)
-
-    dis.to_csv(_static_dis, sep=',', index=1)
-    data.to_csv(_static_data,sep=',',index=1)
-    metadata.to_csv(_static_metadata,sep=',',index=1)
+    dir_path = os.path.dirname(os.path.realpath(input))
+    logger("Output temp file into %s" % _static_dis.format(output=dir_path).strip('.envfit.data'),verbose=1)
+    dis.to_csv(_static_dis.format(output=dir_path), sep=',', index=1)
+    data.to_csv(_static_data.format(output=dir_path),sep=',',index=1)
+    metadata.to_csv(_static_metadata.format(output=dir_path),sep=',',index=1)
 
 def envfit_metadata(data_path ,metadata_path ,dist_path,n_iter=500,return_ord = False):
 
@@ -63,18 +64,19 @@ def main(input,metadata,dis,output,metric,n_iter,filetype,keep=False,verbose=1):
     prepare(input,metadata,dis,metric,filetype)
     logger("Start to load data into r environment and start envfit...",verbose=verbose)
     t1 = time.time()
-    fit_result = envfit_metadata(data_path=_static_data,
-                    metadata_path=_static_metadata,
-                    dist_path=_static_dis,
+    dir_path = os.path.dirname(os.path.realpath(input))
+    fit_result = envfit_metadata(data_path=_static_data.format(output=dir_path),
+                    metadata_path=_static_metadata.format(output=dir_path),
+                    dist_path=_static_dis.format(output=dir_path),
                     n_iter=n_iter,
                     return_ord=False)
     logger("Finish envfit, take", time.time()-t1,'second',verbose=verbose)
     write_data(fit_result,output)
 
     if not keep:
-        os.remove(_static_dis)
-        os.remove(_static_data)
-        os.remove(_static_metadata)
+        os.remove(_static_dis.format(output=dir_path))
+        os.remove(_static_data.format(output=dir_path))
+        os.remove(_static_metadata.format(output=dir_path))
 
 if __name__ == '__main__':
 

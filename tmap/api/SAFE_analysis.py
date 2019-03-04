@@ -1,9 +1,12 @@
 from tmap.tda.utils import read_graph
-from tmap.api.general import logger, data_parser, write_data
+from tmap.api.general import logger, data_parser, write_data,process_metadata_beta
 from tmap.netx.SAFE import SAFE_batch, get_SAFE_summary
 import argparse,pickle
 import pandas as pd
 
+_pickle_safe_format = {'data':'',
+                       'params':{"n_iter":0,
+                                 "nr_threshold":0}}
 
 def preprocess_metadata(paths, filetype='csv',):
     datas = [data_parser(path, ft=filetype, verbose=0) for path in paths]
@@ -22,6 +25,9 @@ def generate_SAFE_score(graph, metadata, n_iter=1000, pval=0.05, nr_threshold=0.
                       "raw": {"enrich": '',
                               "decline": ''},
                       'mode': _mode}
+    _pickle_safe_format['params']["n_iter"] = n_iter
+    _pickle_safe_format['params']["nr_threshold"] = nr_threshold
+
     if _mode == 'both':
         enriched_SAFE, declined_SAFE = SAFE_batch(graph, meta_data=metadata, n_iter=n_iter,
                                                   nr_threshold=nr_threshold, _cal_type=_cal_type, _mode=_mode,verbose=verbose)
@@ -29,8 +35,10 @@ def generate_SAFE_score(graph, metadata, n_iter=1000, pval=0.05, nr_threshold=0.
                                                  n_iter_value=n_iter, p_value=pval)
         declined_SAFE_summary = get_SAFE_summary(graph=graph, meta_data=metadata, safe_scores=declined_SAFE,
                                                  n_iter_value=n_iter, p_value=pval)
-        collect_result['raw']['enrich'] = enriched_SAFE
-        collect_result['raw']['decline'] = declined_SAFE
+        _pickle_safe_format['data'] = enriched_SAFE
+        collect_result['raw']['enrich'] = _pickle_safe_format
+        _pickle_safe_format['data'] = declined_SAFE
+        collect_result['raw']['decline'] = _pickle_safe_format
         collect_result['enrich'] = enriched_SAFE_summary.sort_values('SAFE enriched score',ascending=False)
         collect_result['decline'] = declined_SAFE_summary.sort_values('SAFE enriched score',ascending=False)
     else:
@@ -38,8 +46,9 @@ def generate_SAFE_score(graph, metadata, n_iter=1000, pval=0.05, nr_threshold=0.
                                nr_threshold=nr_threshold, _cal_type=_cal_type, _mode=_mode,verbose=verbose)
         SAFE_summary = get_SAFE_summary(graph=graph, meta_data=metadata, safe_scores=SAFE_data,
                                         n_iter_value=n_iter, p_value=pval)
-        collect_result['raw']['enrich'] = SAFE_data
-        collect_result['raw']['decline'] = SAFE_data
+        _pickle_safe_format['data'] = SAFE_data
+        collect_result['raw']['enrich'] = _pickle_safe_format
+        collect_result['raw']['decline'] = _pickle_safe_format
         collect_result['enrich'] = SAFE_summary.sort_values('SAFE enriched score',ascending=False)
         collect_result['decline'] = SAFE_summary.sort_values('SAFE enriched score',ascending=False)
     return collect_result
@@ -55,16 +64,16 @@ def main(graph, metadata, prefix, cols_dict, n_iter=1000, pval=0.05, nr_threshol
                                  verbose=verbose)
     if len(cols_dict) > 1:
         if _mode != 'both':
-            write_data(result[_mode],prefix,suffix=_mode,mode='multidf',verbose=verbose,df2cols=cols_dict)
+            write_data(result[_mode],prefix.strip('.csv'),suffix=_mode,mode='multidf',verbose=verbose,df2cols=cols_dict)
         else:
-            write_data(result['enrich'], prefix, suffix='enrich', mode='multidf', verbose=verbose, df2cols=cols_dict)
-            write_data(result['decline'], prefix, suffix='decline', mode='multidf', verbose=verbose, df2cols=cols_dict)
+            write_data(result['enrich'], prefix.strip('.csv'), suffix='enrich', mode='multidf', verbose=verbose, df2cols=cols_dict)
+            write_data(result['decline'], prefix.strip('.csv'), suffix='decline', mode='multidf', verbose=verbose, df2cols=cols_dict)
     else:
         if _mode != 'both':
-            write_data(result[_mode], prefix, suffix=_mode, mode='df', verbose=verbose)
+            write_data(result[_mode], prefix.strip('.csv'), suffix=_mode, mode='df', verbose=verbose)
         else:
-            write_data(result['enrich'], prefix, suffix='enrich', mode='df', verbose=verbose)
-            write_data(result['decline'], prefix, suffix='decline', mode='df', verbose=verbose)
+            write_data(result['enrich'], prefix.strip('.csv'), suffix='enrich', mode='df', verbose=verbose)
+            write_data(result['decline'], prefix.strip('.csv'), suffix='decline', mode='df', verbose=verbose)
 
     if raw:
         if _mode != 'both':
@@ -87,7 +96,7 @@ if __name__ == '__main__':
                         default=1000, type=int)
     parser.add_argument("-p", "--pvalue",
                         help="p-val for decide which level of data should consider as significant enriched/declined.",
-                        default='0.05', type=float)
+                        default=0.05, type=float)
     parser.add_argument("-nt", "--nr_threshold", help="The threshold for deciding the distance from centroide to \
                                                       neighbours among pairwise distance between all nodes.",
                         type=float, default=0.5)
@@ -114,6 +123,7 @@ if __name__ == '__main__':
     pval = args.pvalue
 
     metadata, cols_dict = preprocess_metadata(metadata,filetype=args.file_type)
+
     main(graph=graph,
          metadata=metadata,
          prefix=prefix,
