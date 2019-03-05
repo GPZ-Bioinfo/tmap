@@ -20,8 +20,10 @@ setup(name='tmap',
                         'pandas>=0.23.0',
                         'numpy>=1.10.4',
                         'scipy',
-			'matplotlib!=3.0.0rc2',
-#                        'scikit-bio>=0.5.2'
+			            'matplotlib!=3.0.0rc2',
+                        'umap-learn',
+#                        'scikit-bio>=0.5.2',
+			'plotly'
                         ],
       zip_safe=False,
       extras_require={'alldeps': ('numpy>=1.10.4', 'scipy',)}

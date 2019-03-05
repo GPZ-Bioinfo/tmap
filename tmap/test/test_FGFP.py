@@ -6,7 +6,7 @@ from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import MinMaxScaler
 
 from tmap.netx.SAFE import SAFE_batch, get_SAFE_summary
-from tmap.tda import mapper, filter
+from tmap.tda import mapper, Filter
 from tmap.tda.cover import Cover
 from tmap.tda.metric import Metric
 from tmap.tda.plot import show, Color
@@ -23,7 +23,7 @@ tm = mapper.Mapper(verbose=1)
 
 # TDA Step2. Projection
 metric = Metric(metric="precomputed")
-lens = [filter.MDS(components=[0, 1], metric=metric,random_state=100)]
+lens = [Filter.MDS(components=[0, 1], metric=metric, random_state=100)]
 projected_X = tm.filter(dm, lens=lens)
 
 # Step4. Covering, clustering & mapping

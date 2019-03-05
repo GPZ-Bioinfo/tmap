@@ -3,6 +3,7 @@ from __future__ import print_function
 import csv
 import os
 import pickle
+import json
 
 import networkx as nx
 import numpy as np
@@ -124,13 +125,27 @@ def safe_scores_IO(arg, output_path=None, mode='w'):
         return safe_scores
 
 
-def read_graph(path):
-    graph = pickle.load(open(path, 'rb'))
+def read_graph(path,method='pickle'):
+    if method == 'pickle':
+        graph = pickle.load(open(path, 'rb'))
+    elif method == 'json':
+        # currently it will raise error because json can't dump ndarry directly.
+        json.load(path)
+    else:
+        print('Wrong method provided, currently acceptable method are [pickle|json].')
+        return ''
     return graph
 
 
-def dump_graph(graph, path):
-    pickle.dump(graph, open(path, "wb"))
+def dump_graph(graph, path,method='pickle'):
+    # method must one of 'pickle' or 'json'.
+    if method == 'pickle':
+        pickle.dump(graph, open(path, "wb"))
+    elif method =='json':
+        # currently it will raise error because json can't dump ndarry directly.
+        json.dump(graph,open(path,'w'))
+    else:
+        print('Wrong method provided, currently acceptable method are [pickle|json].')
 
 
 def output_graph(graph, filepath, sep='\t'):

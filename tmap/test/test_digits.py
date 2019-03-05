@@ -1,6 +1,6 @@
 from sklearn import datasets
 from sklearn.preprocessing import MinMaxScaler
-from tmap.tda import mapper, filter
+from tmap.tda import mapper, Filter
 from tmap.tda.cover import Cover
 from sklearn.cluster import DBSCAN
 from tmap.tda.plot import Color, show
@@ -14,7 +14,7 @@ y = digits.target
 tm = mapper.Mapper(verbose=1)
 
 # Step2. Projection
-lens = [filter.TSNE(components=[0, 1])]
+lens = [Filter.TSNE(components=[0, 1])]
 projected_X = tm.filter(X, lens=lens)
 
 # Step3. Covering, clustering & mapping

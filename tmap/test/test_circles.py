@@ -1,6 +1,6 @@
 from sklearn import datasets
 from sklearn.cluster import DBSCAN
-from tmap.tda import mapper, filter
+from tmap.tda import mapper, Filter
 from tmap.tda.cover import Cover
 from tmap.tda.plot import show, Color
 
@@ -11,7 +11,7 @@ X, y = datasets.make_circles(n_samples=5000, noise=0.05, factor=0.3)
 tm = mapper.Mapper(verbose=1)
 
 # Step2. Projection
-lens = [filter.PCA(components=[0, 1])]
+lens = [Filter.PCA(components=[0, 1])]
 projected_X = tm.filter(X, lens=lens)
 
 # Step3. Covering, clustering & mapping
