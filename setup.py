@@ -2,8 +2,8 @@ from setuptools import setup, find_packages
 
 setup(name='tmap',
       version='1.0',
-      description='mapper ',
-      author='Haokui Zhou',
+      description='A topological data analysis framework implementing the TDA Mapper algorithm for population-scale microbiome data analysis ',
+      author='Haokui Zhou, Tianhua Liao',
       author_email='zhouhaokui@hotmail.com',
       license='GNU',
       url='https://github.com/GPZ-Bioinfo/tmap',
@@ -12,6 +12,10 @@ setup(name='tmap',
                          'test_data/*.tsv',
                          'example/*'],
                     },
+      scripts=['tmap/api/envfit_analysis.py',
+               'tmap/api/Network_generator.py',
+               'tmap/api/SAFE_analysis.py',
+               'tmap/api/SAFE_visualization.py'],
       install_requires=['statsmodels>=0.9.0',
                         'tqdm',
                         'scikit-learn>=0.19.1',
@@ -20,11 +24,18 @@ setup(name='tmap',
                         'pandas>=0.23.0',
                         'numpy>=1.10.4',
                         'scipy',
-			            'matplotlib!=3.0.0rc2',
+                        'matplotlib!=3.0.0rc2',
                         'umap-learn',
-#                        'scikit-bio>=0.5.2',
-			'plotly'
+                        # 'scikit-bio>=0.5.2',
+                        'plotly'
                         ],
+      classifiers=[
+          "Programming Language :: Python :: 3",
+          "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+          "Operating System :: OS Independent",
+          "Topic :: Scientific/Engineering :: Bio-Informatics",
+
+      ],
       zip_safe=False,
       extras_require={'alldeps': ('numpy>=1.10.4', 'scipy',)}
       )

@@ -1,0 +1,13 @@
+
+envfit_analysis.py -I tmap/test/test_data/FGFP_genus_data.csv -M tmap/test/test_data/FGFP_metadata.tsv -O output/FGFP_envfit.csv -tn 'temp' --keep -v
+
+Network_generator.py -I tmap/test/test_data/FGFP_genus_data.csv -O output/FGFP.graph -v
+
+SAFE_analysis.py both -G output/FGFP.graph -M output/temp.envfit.metadata output/temp.envfit.data -P output/FGFP -i 1000 -p 0.05 --raw -v
+# generate 7 files
+
+SAFE_visualization.py ranking -G output/FGFP.graph -S2 output/FGFP_temp.envfit.metadata_enrich.csv output/FGFP_envfit.csv -O output/FGFP_ranking.html
+
+SAFE_visualization.py stratification -G output/FGFP.graph -S1 output/FGFP_raw_enrich -O output/FGFP_stratification.pdf --type pdf --width 1600 --height 1400
+
+SAFE_visualization.py ordination -S1 output/FGFP_raw_enrich -S2 output/FGFP_temp.envfit.data_enrich.csv output/FGFP_temp.envfit.metadata_enrich.csv -O output/FGFP_ordination.html
