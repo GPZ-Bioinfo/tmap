@@ -1,10 +1,7 @@
 import argparse
-import os
 import pickle
 from collections import Counter
 
-import numpy as np
-import pandas as pd
 import plotly
 import plotly.io as pio
 from plotly import graph_objs as go
@@ -12,30 +9,47 @@ from plotly import tools
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import MinMaxScaler
 
-from tmap.api.general import data_parser, logger
+from tmap.api.general import *
 
 
-def draw_PCOA(rawdata, summary_data, output, mode='html', width=1500, height=1000, sort_col='SAFE enriched score'):
+def draw_PCOA(rawdatas, summary_datas, output, mode='html', width=1500, height=1000, sort_col='SAFE enriched score'):
+    """
+    Currently ordination visualization just support pcoa.
+    :param rawdata:
+    :param summary_data:
+    :param output:
+    :param mode:
+    :param width:
+    :param height:
+    :param sort_col:
+    :return:
+    """
     fig = go.Figure()
-    safe_df = pd.DataFrame.from_dict(rawdata)
+    summary_data = pd.concat(summary_datas, axis=0)
+    # it won't raise error even it only contains one df.
+    safe_dfs = [pd.DataFrame.from_dict(r_dict) for r_dict in rawdatas]  # row represents nodes, columns represents features.
+    safe_df = pd.concat(safe_dfs, axis=1)
     safe_df = safe_df.reindex(columns=summary_data.index)
+
     pca = PCA()
     pca_result = pca.fit_transform(safe_df.T)
 
     mx_scale = MinMaxScaler(feature_range=(10, 40)).fit(summary_data.loc[:, [sort_col]])
+    top10_feas = list(summary_data.sort_values(sort_col, ascending=False).index[:10])
 
-    vals = summary_data.loc[:, [sort_col]]
-    fig.add_trace(go.Scatter(x=pca_result[:, 0],
-                             y=pca_result[:, 1],
-                             mode="markers",
-                             marker=dict(  # color=color_codes[cat],
-                                 size=mx_scale.transform(vals),
-                                 opacity=0.5),
-                             showlegend=False,
-                             text=summary_data.index))
+    for each in summary_datas:
+        vals = each.loc[:, [sort_col]]
+        fig.add_trace(go.Scatter(x=pca_result[safe_df.columns.isin(each.index), 0],
+                                 y=pca_result[safe_df.columns.isin(each.index), 1],
+                                 mode="markers",
+                                 marker=dict(  # color=color_codes[cat],
+                                     size=mx_scale.transform(vals),
+                                     opacity=0.5),
+                                 showlegend=False,
+                                 text=safe_df.columns[safe_df.columns.isin(each.index)]))
 
-    fig.add_trace(go.Scatter(x=pca_result[:, 0],
-                             y=pca_result[:, 1],
+    fig.add_trace(go.Scatter(x=pca_result[safe_df.columns.isin(top10_feas), 0],
+                             y=pca_result[safe_df.columns.isin(top10_feas), 1],
                              # visible=False,
                              mode="text",
                              hoverinfo='none',
@@ -43,7 +57,7 @@ def draw_PCOA(rawdata, summary_data, output, mode='html', width=1500, height=100
                              name='name for searching',
                              showlegend=False,
                              textfont=dict(size=13),
-                             text=''))
+                             text=top10_feas))
 
     fig.layout.update(dict(xaxis=dict(title="PC1({:.2f}%)".format(pca.explained_variance_ratio_[0] * 100)),
                            yaxis=dict(title="PC2({:.2f}%)".format(pca.explained_variance_ratio_[1] * 100)),
@@ -51,11 +65,11 @@ def draw_PCOA(rawdata, summary_data, output, mode='html', width=1500, height=100
                            height=height,
                            font=dict(size=15),
                            hovermode='closest', ))
-    if mode != 'html':
+    if mode != 'html' or not output.endswith('html'):
         pio.write_image(fig, output, format=mode)
     else:
         plotly.offline.plot(fig, filename=output, auto_open=False)
-
+    logger("Ordination graph has been output to",output, verbose=1)
 
 def draw_stratification(graph, SAFE_dict, output, mode='html', n_iter=1000, p_val=0.05, width=1000, height=1000):
     # Enterotyping-like stratification map based on SAFE score
@@ -109,11 +123,11 @@ def draw_stratification(graph, SAFE_dict, output, mode='html', n_iter=1000, p_va
     fig.layout.font.size = 30
     fig.layout.hovermode = 'closest'
 
-    if mode != 'html':
+    if mode != 'html' or not output.endswith('html'):
         pio.write_image(fig, output, format=mode)
     else:
         plotly.offline.plot(fig, filename=output, auto_open=False)
-
+    logger("Stratification graph has been output to", output, verbose=1)
 
 def process_summary_paths(safe_summaries):
     datas = [data_parser(path, verbose=0) for path in safe_summaries]
@@ -156,49 +170,29 @@ def draw_ranking(data, cols_dict, output, mode='html', width=1600, height=1400, 
 
     for idx, each in enumerate(col_names):
         col = idx + 1
-        name = [_ for _ in cols_dict[each] if _.startswith(sort_col)][0]
+
+        name = [_ for _ in cols_dict[each] if _.startswith(sort_col)]
+        if not name and [_ for _ in cols_dict[each] if _.startswith('r2')]:
+            name = [_ for _ in cols_dict[each] if _.startswith('r2')][0]
+        elif name:
+            name = name[0]
+        else:
+            logger("Unkown input file.", verbose=1)
         _add_trace(name, col)
 
     fig.layout.yaxis.autorange = 'reversed'
 
-    fig.layout.margin.l = width/4
+    fig.layout.margin.l = width / 4
     fig.layout.width = width
     fig.layout.height = height
 
-    if mode != 'html':
+    if mode != 'html' or not output.endswith('html'):
         pio.write_image(fig, output, format=mode)
     else:
         plotly.offline.plot(fig, filename=output, auto_open=False)
+    logger("Ranking graph has been output to", output, verbose=1)
 
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument("mission", help="Which kinds of graph you want to generate. \
-                         [ranking|stratification|ordination]",
-                        type=str, choices=['ranking', 'stratification', 'ordination'])
-    parser.add_argument("-G", "--graph", help="Graph file computed from 'Network_generator.py'.",
-                        type=str)
-    parser.add_argument("-O", "--output", help="Prefix of output file",
-                        type=str)
-    parser.add_argument("-S1", "--SAFE", help="Pickled dict contains raw SAFE scores.",
-                        type=str)
-    parser.add_argument("-S2", "--SAFE_summary", dest='sum_s', nargs='*', help="Summary of SAFE scores",
-                        type=str)
-    parser.add_argument("--sort", help="The column you need to sort with",
-                        type=str, default='SAFE enriched score')
-    parser.add_argument("-p", "--pvalue",
-                        help="p-val for decide which level of data should consider as significant",
-                        default=0.05, type=float)
-    parser.add_argument("--type", help="The file type to output figure. [pdf|html|png]",
-                        type=str, default='html')
-    parser.add_argument("--width", help="The height of output picture",
-                        type=int,default=1600)
-    parser.add_argument("--height", help="The width of output picture",
-                        type=int,default=1600)
-
-    parser.add_argument("-v", "--verbose", help="increase output verbosity",
-                        action="store_true")
-    args = parser.parse_args()
+def main(args):
     if args.mission == 'ranking':
         data, cols_dict = process_summary_paths(args.sum_s)
         draw_ranking(data=data,
@@ -209,7 +203,7 @@ if __name__ == '__main__':
                      width=args.width,
                      sort_col=args.sort)
     elif args.mission == 'stratification':
-        dict_data = pickle.load(open(args.SAFE, 'rb'))
+        dict_data = pickle.load(open(args.SAFE[0], 'rb'))
         safe_dict = dict_data['data']
         n_iter = dict_data['params']['n_iter']
         graph = pickle.load(open(args.graph, 'rb'))
@@ -222,18 +216,48 @@ if __name__ == '__main__':
                             width=args.width,
                             height=args.height)
     elif args.mission == 'ordination':
-        dict_data = pickle.load(open(args.SAFE, 'rb'))
-        safe_dict = dict_data['data']
-        data, cols_dict = process_summary_paths(args.sum_s)
-        graph = pickle.load(open(args.graph, 'rb'))
-        col_names = list(cols_dict.keys())
-        if len(col_names) != 1:
-            logger("The number of raw data of SAFE needs to match the number of summary input.", verbose=1)
-        else:
-            draw_PCOA(rawdata=safe_dict,
-                      summary_data=data,
-                      output=args.output,
-                      mode=args.type,
-                      height=args.height,
-                      width=args.width,
-                      sort_col=args.sort)
+        dict_datas = [pickle.load(open(rawSAFE, 'rb')) for rawSAFE in args.SAFE]
+        safe_dicts = [dict_data['data'] for dict_data in dict_datas]
+        summary_datas = [data_parser(path, verbose=0) for path in args.sum_s]
+
+        if len(summary_datas) != len(safe_dicts):
+            logger("Warning!!! The number of raw data didn't equal to the number of summary datas. It may occurs error.", verbose=1)
+
+        draw_PCOA(rawdatas=safe_dicts,
+                  summary_datas=summary_datas,
+                  output=args.output,
+                  mode=args.type,
+                  height=args.height,
+                  width=args.width,
+                  sort_col=args.sort)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("mission", help="Which kinds of graph you want to generate. \
+                         [ranking|stratification|ordination]",
+                        type=str, choices=['ranking', 'stratification', 'ordination'])
+    parser.add_argument("-G", "--graph", help="Graph file computed from 'Network_generator.py'.",
+                        type=str)
+    parser.add_argument("-O", "--output", help="Prefix of output file",
+                        type=str)
+    parser.add_argument("-S1", "--SAFE", nargs='*', help="Pickled dict contains raw SAFE scores.",
+                        type=str)
+    parser.add_argument("-S2", "--SAFE_summary", dest='sum_s', nargs='*', help="Summary of SAFE scores",
+                        type=str)
+    parser.add_argument("--sort", help="The column you need to sort with",
+                        type=str, default='SAFE enriched score')
+    parser.add_argument("-p", "--pvalue",
+                        help="p-val for decide which level of data should consider as significant",
+                        default=0.05, type=float)
+    parser.add_argument("--type", help="The file type to output figure. [pdf|html|png]",
+                        type=str, default='html')
+    parser.add_argument("--width", help="The height of output picture",
+                        type=int, default=1600)
+    parser.add_argument("--height", help="The width of output picture",
+                        type=int, default=1600)
+    args = parser.parse_args()
+
+    process_output(output=args.output)
+
+    main(args)
