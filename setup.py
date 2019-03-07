@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='tmap',
-      version='1.0',
+      version='1.0.1',
       description='A topological data analysis framework implementing the TDA Mapper algorithm for population-scale microbiome data analysis ',
       author='Haokui Zhou, Tianhua Liao',
       author_email='zhouhaokui@hotmail.com',
@@ -22,11 +22,12 @@ setup(name='tmap',
                         'matplotlib>=2.2.2',
                         'networkx>=2.1',
                         'pandas>=0.23.0',
-                        'numpy>=1.10.4',
                         'scipy',
                         'matplotlib!=3.0.0rc2',
                         'umap-learn',
-                        # 'scikit-bio>=0.5.2',
+                        'scikit-bio>=0.5.2',
+                        'numpy<1.14.0,>=1.9.2',
+                        'rpy2',
                         'plotly'
                         ],
       classifiers=[
@@ -34,8 +35,6 @@ setup(name='tmap',
           "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
           "Operating System :: OS Independent",
           "Topic :: Scientific/Engineering :: Bio-Informatics",
-
       ],
       zip_safe=False,
-      extras_require={'alldeps': ('numpy>=1.10.4', 'scipy',)}
       )

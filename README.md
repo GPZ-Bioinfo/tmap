@@ -9,14 +9,17 @@ Topological data analysis (TDA) provides a promising technique for analyzing lar
 # How to Install *tmap*?
 
 To install tmap, run:
-```python
+```bash
 git clone https://github.com/GPZ-Bioinfo/tmap.git
 cd tmap
 python setup.py install
 ```
-If you encounter any error like `Import error: tkinter`, you need to run `sudo apt install python-tk` or `sudo apt install python3-tk`.
 
-***Note***: We suggest using `NetworkX 1.11` for network analysis and plotting, otherwise using a newer version will return an inconsisent generator with the error `AttributeError: 'generator' object has no attribute 'values'`.
+or you could also use pip now:
+```bash
+pip install tmap
+```
+If you encounter any error like `Import error: tkinter`, you need to run `sudo apt install python-tk` or `sudo apt install python3-tk`.
 
 # *tmap* Documentation
 
@@ -26,6 +29,7 @@ If you encounter any error like `Import error: tkinter`, you need to run `sudo a
 * [Network Statistical Analysis in tmap](https://tmap.readthedocs.io/en/latest/statistical.html)
 * [How tmap work](https://tmap.readthedocs.io/en/latest/how2work.html)
 * [Microbiome Examples](https://tmap.readthedocs.io/en/latest/example.html)
+* [Tutorial of executable scripts](https://tmap.readthedocs.io/en/latest/scripts.html)
 * [API](https://tmap.readthedocs.io/en/latest/api.html)
 * [Reference](https://tmap.readthedocs.io/en/latest/reference.html)
 * [FAQ](https://tmap.readthedocs.io/en/latest/FAQ.html)
@@ -35,8 +39,10 @@ If you encounter any error like `Import error: tkinter`, you need to run `sudo a
 You can read the [Basic Usage of tmap](https://tmap.readthedocs.io/en/latest/basic.html) for general use of tmap.
 Or follow the [Microbiome examples](https://tmap.readthedocs.io/en/latest/example.html) for using tmap in microbiome analysis.
 
+For more convenient usage, we implement some executable scripts which will automatically build upon `$PATH`. For more information about these scripts, you could see.
+[Tutorial of executable scripts](https://tmap.readthedocs.io/en/latest/scripts.html)
+
 # *tmap* Publication
 
 # Contact Us
 If you have any questions or suggestions, you are welcome to contact us via email: haokui.zhou@gmail.com.
-
