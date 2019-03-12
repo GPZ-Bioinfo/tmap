@@ -58,24 +58,38 @@ def envfit_metadata(data_path, metadata_path, dist_path, n_iter=500, return_ord=
         return fit_result
 
 
-def main(input, metadata, dis, output, metric, n_iter, filetype, keep=False, verbose=1):
+def main(input, metadata, dis, output, metric, n_iter, filetype, just_pre=False,keep=False, verbose=1):
+    """
+    :param input:  file path of input data. It should be csv format or tab format instead of XLSX. Row represents samples, Column represents features(Mostly it may be OTU/Genus).
+    :param metadata: file path of metadata data. The number of row must equal to the number of row in `input`. It also should be csv format.
+    :param output: path of output file. (FULL name instead of prefix. Only one output.)
+    :param dis: Pairwise distance matrix. (It could be none and use `metric` to let the programme calculated for user.)
+    :param n_iter: The number of time to shuffle at `envfit`.
+    :param metric: The distance metric to use.
+    :param just_pre: Boolean value for indicate whether to run envfit or just use this function to preprocess metadata.
+    :param keep:
+    :param verbose:
+    :return:
+    """
     logger("prepare the input data for envfit......", verbose=verbose)
     prepare(input, output,metadata, dis, metric, filetype)
     logger("Start to load data into r environment and start envfit...", verbose=verbose)
     t1 = time.time()
     dir_path = os.path.dirname(os.path.realpath(output))
-    fit_result = envfit_metadata(data_path=_static_data.format(output=dir_path),
-                                 metadata_path=_static_metadata.format(output=dir_path),
-                                 dist_path=_static_dis.format(output=dir_path),
-                                 n_iter=n_iter,
-                                 return_ord=False)
-    logger("Finish envfit, take", time.time() - t1, 'second', verbose=verbose)
-    write_data(fit_result, output)
+    if not just_pre:
+        fit_result = envfit_metadata(data_path=_static_data.format(output=dir_path),
+                                     metadata_path=_static_metadata.format(output=dir_path),
+                                     dist_path=_static_dis.format(output=dir_path),
+                                     n_iter=n_iter,
+                                     return_ord=False)
+        logger("Finish envfit, take", time.time() - t1, 'second', verbose=verbose)
+        write_data(fit_result, output)
 
     if not keep:
         os.remove(_static_dis.format(output=dir_path))
         os.remove(_static_data.format(output=dir_path))
         os.remove(_static_metadata.format(output=dir_path))
+
 
 
 if __name__ == '__main__':
@@ -105,6 +119,8 @@ if __name__ == '__main__':
                         type=str, default='csv')
     parser.add_argument("-tn", "--temp_name", help="Manually assign name to temporal files.",
                         type=str, default='')
+    parser.add_argument("--dont_analysis", dest='just_pre',help="Don not run envfit, just preprocess the metadata.",
+                        action="store_true")
     parser.add_argument("--keep", help="Keep intermediate files.",
                         action="store_true")
     parser.add_argument("-v", "--verbose", help="increase output verbosity",
@@ -135,5 +151,6 @@ if __name__ == '__main__':
          metric=metric,
          n_iter=n_iter,
          filetype=args.file_type,
+         just_pre=args.just_pre,
          keep=args.keep,
          verbose=args.verbose)
