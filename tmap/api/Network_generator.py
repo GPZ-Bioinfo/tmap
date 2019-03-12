@@ -51,8 +51,11 @@ def generate_graph(input_data, dis=None, _eu_dm=None, eps_threshold=95, overlap=
     logger('Graph covers %.2f percentage of samples.' % cover_ratio(graph, input_data), verbose=verbose)
     logger("graph time: ", time.time() - t1, verbose=verbose)
 
-    param
-    return graph, projected_X
+    accessory_obj = {'raw_X':projected_X,
+                     'cover':cover,
+                     'clusterer':clusterer}
+    graph['accessory_obj'] = accessory_obj
+    return graph
 
 
 def main(input, output, dis=None, _eu_dm=None, metric="braycurtis", eps=95, overlap=0.75, min_s=3, r=40, filter='PCOA', method='pickle', filetype='csv', verbose=1):
@@ -63,13 +66,13 @@ def main(input, output, dis=None, _eu_dm=None, metric="braycurtis", eps=95, over
         dis = pd.read_csv(dis, sep=',', index_col=0)
 
     if _eu_dm is None:
-        eu_dm = pd.read_csv(_eu_dm, sep=',', index_col=0)
-    else:
         eu_dm = cal_dis(data, metric='euclidean', verbose=1)
+    else:
+        eu_dm = pd.read_csv(_eu_dm, sep=',', index_col=0)
 
     if filter not in _filter_dict:
         logger("Wrong filter you provide, available fitler are ", ','.join(_filter_dict.keys()), verbose=1)
-    graph, projected_X = generate_graph(data,
+    graph = generate_graph(data,
                                         dis=dis,
                                         _eu_dm=eu_dm,
                                         eps_threshold=eps,
