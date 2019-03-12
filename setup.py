@@ -28,7 +28,7 @@ setup(name='tmap',
                         'umap-learn',
                         'numpy<1.14.0,>=1.9.2',
                         'rpy2',
-                        'plotly'
+                        'plotly',
                         'scikit-bio>=0.5.2',
                         ],
       classifiers=[
