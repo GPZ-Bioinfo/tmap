@@ -51,23 +51,33 @@ def generate_graph(input_data, dis=None, _eu_dm=None, eps_threshold=95, overlap=
     logger('Graph covers %.2f percentage of samples.' % cover_ratio(graph, input_data), verbose=verbose)
     logger("graph time: ", time.time() - t1, verbose=verbose)
 
-    return graph
+    param
+    return graph, projected_X
 
 
-def main(input, output, dis=None, metric="braycurtis", eps=95, overlap=0.75, min_s=3, r=40, filter='PCOA', method='pickle', filetype='csv', verbose=1):
+def main(input, output, dis=None, _eu_dm=None, metric="braycurtis", eps=95, overlap=0.75, min_s=3, r=40, filter='PCOA', method='pickle', filetype='csv', verbose=1):
     data = data_parser(input, ft=filetype)
     if dis is None:
         dis = cal_dis(data, metric=metric, verbose=verbose)
-    eu_dm = cal_dis(data, metric='euclidean', verbose=1)
+    else:
+        dis = pd.read_csv(dis, sep=',', index_col=0)
+
+    if _eu_dm is None:
+        eu_dm = pd.read_csv(_eu_dm, sep=',', index_col=0)
+    else:
+        eu_dm = cal_dis(data, metric='euclidean', verbose=1)
+
     if filter not in _filter_dict:
         logger("Wrong filter you provide, available fitler are ", ','.join(_filter_dict.keys()), verbose=1)
-    graph = generate_graph(data, dis,
-                           _eu_dm=eu_dm,
-                           eps_threshold=eps,
-                           overlap=overlap,
-                           min_samples=min_s,
-                           r=r,
-                           filter=filter)
+    graph, projected_X = generate_graph(data,
+                                        dis=dis,
+                                        _eu_dm=eu_dm,
+                                        eps_threshold=eps,
+                                        overlap=overlap,
+                                        min_samples=min_s,
+                                        r=r,
+                                        filter=filter)
+
     if graph is None:
         logger("Empty graph generated... ERROR occur", verbose=1)
     else:
@@ -83,7 +93,10 @@ if __name__ == '__main__':
                         required=True)
     parser.add_argument("-O", "--output", help="Output File. Generated Network with its metadata.(python3's pickle format)",
                         required=True)
-    parser.add_argument("-d", "--dis", help="Distance matrix of input file. (Optional),If you doesn't provide, it will automatically \
+    parser.add_argument("-d", "--dis", help="Distance matrix of input file for lens. (Optional),If you doesn't provide, it will automatically \
+                                             calculate distance matrix according to the file you provide and the metric you assign.",
+                        default=None)
+    parser.add_argument("--eu_dis", help="Eucildean Distance matrix of input file for clustering. (Optional),If you doesn't provide, it will automatically \
                                              calculate distance matrix according to the file you provide and the metric you assign.",
                         default=None)
     parser.add_argument("-m", "--metric", help="""The distance metric to use.The distance function can \
@@ -126,6 +139,7 @@ if __name__ == '__main__':
     main(input=args.input,
          output=args.output,
          dis=dis,
+         _eu_dm=args.eu_dis,
          metric=metric,
          eps=args.eps,
          overlap=args.overlap,
