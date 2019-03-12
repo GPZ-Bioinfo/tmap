@@ -67,10 +67,10 @@ class Color(object):
                 and (not isinstance(target[0][0], np.number))
         ):
             self.label_encoder = LabelEncoder()
-            self.target = self.label_encoder.fit_transform(target.ravel())
+            self.target = self.label_encoder.fit_transform(target.ravel()).reshape(-1,1)
         elif dtype == "categorical":
             self.label_encoder = LabelEncoder()
-            self.target = self.label_encoder.fit_transform(target.astype(str).ravel())
+            self.target = self.label_encoder.fit_transform(target.astype(str).ravel()).reshape(-1,1)
         else:
             self.label_encoder = None
             self.target = target
@@ -111,11 +111,14 @@ class Color(object):
         index_median_q3 = np.where(((target >= median) & (target <= q3)))[0]
         index_q3_max = np.where(target >= q3)[0]
 
-        target_min_q1 = scaler_min_q1.fit_transform(target[index_min_q1]) if any(index_min_q1) else np.zeros(target[index_min_q1].shape)
-        target_q1_median = scaler_q1_median.fit_transform(target[index_q1_median]) if any(index_q1_median) else np.zeros(target[index_q1_median].shape)
-        target_median_q3 = scaler_median_q3.fit_transform(target[index_median_q3]) if any(index_median_q3) else np.zeros(target[index_median_q3].shape)
-        target_q3_max = scaler_q3_max.fit_transform(target[index_q3_max]) if any(index_q3_max) else np.zeros(target[index_q3_max].shape)
-        # in case the situation which will raise ValueError when sliced_index is all False.
+        try:
+            target_min_q1 = scaler_min_q1.fit_transform(target[index_min_q1]) if any(index_min_q1) else np.zeros(target[index_min_q1].shape)
+            target_q1_median = scaler_q1_median.fit_transform(target[index_q1_median]) if any(index_q1_median) else np.zeros(target[index_q1_median].shape)
+            target_median_q3 = scaler_median_q3.fit_transform(target[index_median_q3]) if any(index_median_q3) else np.zeros(target[index_median_q3].shape)
+            target_q3_max = scaler_q3_max.fit_transform(target[index_q3_max]) if any(index_q3_max) else np.zeros(target[index_q3_max].shape)
+            # in case the situation which will raise ValueError when sliced_index is all False.
+        except Exception as e:
+            import pdb;pdb.set_trace()
 
         # using percentile to cut and assign colors will meet some special case which own weak distribution.
         # below `if` statement is trying to determine and solve these situations.

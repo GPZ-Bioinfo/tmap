@@ -20,12 +20,21 @@ def prepare(input, output,metadata, dis, metric, filetype):
         dis = data_parser(dis, ft=filetype)
     metadata = data_parser(metadata, ft=filetype)
     # preprocess metadata
-    metadata = process_metadata_beta(data, metadata, verbose=1)
+    post_metadata = process_metadata_beta(data, metadata, verbose=1)
+
+
     dir_path = os.path.dirname(os.path.realpath(output))
     logger("Output temp file into %s" % _static_dis.format(output=dir_path).strip('.envfit.data'), verbose=1)
     dis.to_csv(_static_dis.format(output=dir_path), sep=',', index=1)
     data.to_csv(_static_data.format(output=dir_path), sep=',', index=1)
-    metadata.to_csv(_static_metadata.format(output=dir_path), sep=',', index=1)
+    if metadata.shape[1] / metadata.shape[1] >= 5:
+        logger("May occur error because of process metadata, it may check carefully... It may wrongly take numerical columns as categorical columns so make dimension explosion. ", verbose=1)
+        metadata.to_csv(_static_metadata.format(output=dir_path), sep=',', index=1)
+        post_metadata.to_csv(_static_metadata.format(output=dir_path), sep=',', index=1)
+    else:
+        post_metadata.to_csv(_static_metadata.format(output=dir_path), sep=',', index=1)
+
+
 
 
 def envfit_metadata(data_path, metadata_path, dist_path, n_iter=500, return_ord=False):
@@ -138,10 +147,12 @@ if __name__ == '__main__':
         _static_data = '{output}/%s.envfit.data' % args.temp_name
         _static_dis = '{output}/%s.envfit.dis' % args.temp_name
         _static_metadata = '{output}/%s.envfit.metadata' % args.temp_name
+        _static_metadata = '{output}/%s.envfit.postmetadata' % args.temp_name
     else:
         _static_data = '{output}/%s.envfit.data' % random_str
         _static_dis = '{output}/%s.envfit.dis' % random_str
         _static_metadata = '{output}/%s.envfit.metadata' % random_str
+        _static_metadata = '{output}/%s.envfit.postmetadata' % random_str
 
     process_output(output=output)
     main(input=input,

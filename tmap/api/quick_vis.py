@@ -2,7 +2,8 @@ import argparse
 import pickle
 
 from tmap.api.general import *
-from tmap.tda.plot import vis_progressX,Color
+from tmap.tda.plot import vis_progressX, Color
+
 
 def main(args):
     graph = pickle.load(open(args.graph, 'rb'))
@@ -13,14 +14,11 @@ def main(args):
         metadata = data_parser(args.metadata)
         col = args.column
         if not col:
-            logger("No column assign, it won't assign any color.",verbose=1)
+            logger("No column assign, it won't assign any color.", verbose=1)
 
         else:
-            col_data = metadata.loc[:,col]
-            if is_numeric_dtype(col_data):
-                color = Color(metadata.loc[:,col],dtype='numerical',target_by='sample')
-            else:
-                color = Color(metadata.loc[:, col], dtype='categorical', target_by='sample')
+            col_data = metadata.loc[:, col]
+            color = Color(col_data, dtype=args.dtype, target_by='sample')
 
     vis_progressX(graph, projected_X=projected_X,
                   mode='file',
@@ -37,8 +35,9 @@ if __name__ == '__main__':
     parser.add_argument("-O", "--output", help="full path of output file",
                         type=str, required=True)
     parser.add_argument("-M", "--metadata", help="full path of metadata",
-                        type=str,)
-    parser.add_argument("-col","--column",help="column you want to use as color with",type=str)
+                        type=str, )
+    parser.add_argument("-col", "--column", help="column you want to use as color with", type=str)
+    parser.add_argument("-t", "--dtype", help="column you want to use as color with", type=str, default='numerical')
     args = parser.parse_args()
 
     process_output(output=args.output)
