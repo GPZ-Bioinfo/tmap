@@ -1,5 +1,7 @@
+#! /usr/bin/python3
 import argparse
 import pickle
+import time
 
 import pandas as pd
 from pandas.api.types import is_categorical_dtype
@@ -61,10 +63,22 @@ def generate_SAFE_score(graph, metadata, n_iter=1000, pval=0.05, nr_threshold=0.
     return collect_result
 
 
-def main(graph, metadata, prefix, cols_dict, n_iter=1000, pval=0.05, nr_threshold=0.5, _mode='enrich', _cal_type='df',
-         method='pickle', raw=0, verbose=1):
-    logger("Loding precomputed graph from", graph, verbose=1)
+def main(args):
+    verbose = args.verbose
+    raw = args.raw
+    graph = args.graph
+    metadata = args.metadata
+    prefix = args.prefix
+    n_iter = args.iter
+    pval = args.pvalue
+    nr_threshold = args.nr_threshold
+    _mode = args.mode
+    _cal_type = args.cal_type
+    method = args.method
+
+    logger("Loding precomputed graph from \"{}\" ".format(graph), verbose=1)
     graph = read_graph(graph, method=method)
+    logger("Start perfoming SAFE analysis", verbose=1)
     result = generate_SAFE_score(graph, metadata, n_iter=n_iter,
                                  pval=pval, nr_threshold=nr_threshold,
                                  _mode=_mode, _cal_type=_cal_type,
@@ -132,17 +146,7 @@ if __name__ == '__main__':
     n_iter = args.iter
     pval = args.pvalue
 
-    metadata, cols_dict = preprocess_metadata(metadata, filetype=args.file_type)
+    metadata, cols_dict = data_parser(metadata,ft='metadatas')
     process_output(output=prefix)
 
-    main(graph=graph,
-         metadata=metadata,
-         prefix=prefix,
-         n_iter=n_iter,
-         pval=pval,
-         nr_threshold=args.nr_threshold,
-         _mode=args.mode,
-         _cal_type=args.cal_type,
-         method=args.method,
-         raw=args.raw,
-         cols_dict=cols_dict)
+    main(args)

@@ -1,3 +1,4 @@
+#! /usr/bin/python3
 import argparse
 import pickle
 from collections import Counter

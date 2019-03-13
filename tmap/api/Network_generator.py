@@ -1,3 +1,4 @@
+#! /usr/bin/python3
 from scipy.spatial.distance import squareform, pdist
 from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import MinMaxScaler
@@ -11,9 +12,9 @@ from tmap.tda.utils import optimize_dbscan_eps, cover_ratio, dump_graph
 
 pd.options.display.expand_frame_repr = False
 pd.options.display.max_rows = 1000
-import warnings
 import time
 import argparse
+import warnings
 
 warnings.filterwarnings('ignore')
 
@@ -49,11 +50,12 @@ def generate_graph(input_data, dis=None, _eu_dm=None, eps_threshold=95, overlap=
     cover = Cover(projected_data=MinMaxScaler().fit_transform(projected_X), resolution=r, overlap=overlap)
     graph = tm.map(data=input_data, cover=cover, clusterer=clusterer)
     logger('Graph covers %.2f percentage of samples.' % cover_ratio(graph, input_data), verbose=verbose)
-    logger("graph time: ", time.time() - t1, verbose=verbose)
+    logger("graph generator take: ", time.time() - t1, verbose=verbose)
 
-    accessory_obj = {'raw_X':projected_X,
-                     'cover':cover,
-                     'clusterer':clusterer}
+    accessory_obj = {'raw_X': projected_X,
+                     'cover': cover,
+                     'clusterer': clusterer,
+                     'input_data': input_data}
     graph['accessory_obj'] = accessory_obj
     return graph
 
@@ -73,13 +75,13 @@ def main(input, output, dis=None, _eu_dm=None, metric="braycurtis", eps=95, over
     if filter not in _filter_dict:
         logger("Wrong filter you provide, available fitler are ", ','.join(_filter_dict.keys()), verbose=1)
     graph = generate_graph(data,
-                                        dis=dis,
-                                        _eu_dm=eu_dm,
-                                        eps_threshold=eps,
-                                        overlap=overlap,
-                                        min_samples=min_s,
-                                        r=r,
-                                        filter=filter)
+                           dis=dis,
+                           _eu_dm=eu_dm,
+                           eps_threshold=eps,
+                           overlap=overlap,
+                           min_samples=min_s,
+                           r=r,
+                           filter=filter)
 
     if graph is None:
         logger("Empty graph generated... ERROR occur", verbose=1)

@@ -467,9 +467,11 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
     # values output from color.target. It need to apply mean function for a samples-length color.target.
     node_text = [str(n) +
                  # node id
-                 "<Br>vals:%s<Br>" % str(v) +
+                 "<Br>vals:%s<Br>" % '{:.2f}'.format(v) +
                  # node values output from color.target.
-                 '<Br>'.join(sample_names[nodes[n]]) for n, v in
+                 '<Br>'.join(list(sample_names[nodes[n]][:8]) + ['......']
+                             if len(sample_names[nodes[n]]) >= 8  # too long will make the node doesn't hover anythings.
+                             else sample_names[nodes[n]]) for n, v in
                  # samples name concated with line break.
                  zip(nodes,
                      node_vis_vals)]
@@ -491,6 +493,7 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
         marker=dict(color="#8E9DA2",
                     opacity=0.7),
         line=dict(width=1),
+        hoverinfo='skip',
         showlegend=False,
         mode="lines")
     node_marker = go.Scatter(
@@ -498,7 +501,7 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
         visible=False,
         x=node_pos[:, 0],
         y=node_pos[:, 1],
-        text=node_text,
+        hovertext=node_text,
         hoverinfo="text",
         marker=dict(color=node_colors,
                     size=minmax_scaler.fit_transform(np.array([sizes[_] for _ in range(len(nodes))]).reshape(-1, 1)),
@@ -510,7 +513,8 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
         x=ori_MDS[:, 0],
         y=ori_MDS[:, 1],
         marker=dict(color=samples_colors),
-        text=samples_text,
+        hovertext=samples_text,
+
         hoverinfo="text",
         showlegend=False,
         mode="markers")
@@ -565,7 +569,7 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
                 y=samples_pos[:, 1] + ((center_pos - samples_pos) / n_step * s)[:, 1],
                 marker=dict(color=samples_colors_dynamic),
                 hoverinfo="text",
-                text=broadcast_samples_text,
+                hovertext=broadcast_samples_text,
                 showlegend=False,
                 mode="markers"), 1, 1)
 

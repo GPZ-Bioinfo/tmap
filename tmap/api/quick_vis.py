@@ -1,8 +1,11 @@
 import argparse
 import pickle
+import warnings
 
 from tmap.api.general import *
 from tmap.tda.plot import vis_progressX, Color
+
+warnings.filterwarnings('ignore')
 
 
 def main(args):
@@ -20,9 +23,10 @@ def main(args):
             col_data = metadata.loc[:, col]
             color = Color(col_data, dtype=args.dtype, target_by='sample')
 
-    vis_progressX(graph, projected_X=projected_X,
+    vis_progressX(graph,
+                  projected_X=projected_X,
                   mode='file',
-                  simple=True,
+                  simple=False if args.complex else True,
                   color=color,
                   filename=args.output,
                   auto_open=False)
@@ -38,6 +42,8 @@ if __name__ == '__main__':
                         type=str, )
     parser.add_argument("-col", "--column", help="column you want to use as color with", type=str)
     parser.add_argument("-t", "--dtype", help="column you want to use as color with", type=str, default='numerical')
+    parser.add_argument("--complex", help="increase graph complexity",
+                        action="store_true")
     args = parser.parse_args()
 
     process_output(output=args.output)
