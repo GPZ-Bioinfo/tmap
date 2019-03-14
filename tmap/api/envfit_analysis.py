@@ -28,12 +28,13 @@ def prepare(input, output,metadata, dis, metric, filetype):
     logger("Output temp file into %s" % _static_dis.format(output=dir_path).strip('.envfit.data'), verbose=1)
     dis.to_csv(_static_dis.format(output=dir_path), sep=',', index=1)
     data.to_csv(_static_data.format(output=dir_path), sep=',', index=1)
-    if metadata.shape[1] / post_metadata.shape[1] >= 5:
+    if post_metadata.shape[1] / metadata.shape[1] >= 5:
         logger("May occur error because of process metadata, it may check carefully... It may wrongly take numerical columns as categorical columns so make dimension explosion. ", verbose=1)
-        post_metadata.to_csv(_static_postmetadata.format(output=dir_path), sep=',', index=1)
+        metadata.to_csv(_static_beforemetadata.format(output=dir_path), sep=',', index=1)
+        post_metadata.to_csv(_static_metadata.format(output=dir_path), sep=',', index=1)
     else:
-        metadata.to_csv(_static_metadata.format(output=dir_path), sep=',', index=1)
-        post_metadata.to_csv(_static_postmetadata.format(output=dir_path), sep=',', index=1)
+        metadata.to_csv(_static_beforemetadata.format(output=dir_path), sep=',', index=1)
+        post_metadata.to_csv(_static_metadata.format(output=dir_path), sep=',', index=1)
 
 
 
@@ -100,7 +101,7 @@ def main(input, metadata, dis, output, metric, n_iter, filetype, just_pre=False,
         os.remove(_static_dis.format(output=dir_path))
         os.remove(_static_data.format(output=dir_path))
         os.remove(_static_metadata.format(output=dir_path))
-        os.remove(_static_postmetadata.format(output=dir_path))
+        os.remove(_static_beforemetadata.format(output=dir_path))
 
 
 if __name__ == '__main__':
@@ -149,12 +150,12 @@ if __name__ == '__main__':
         _static_data = '{output}/%s.envfit.data' % args.temp_name
         _static_dis = '{output}/%s.envfit.dis' % args.temp_name
         _static_metadata = '{output}/%s.envfit.metadata' % args.temp_name
-        _static_postmetadata = '{output}/%s.envfit.postmetadata' % args.temp_name
+        _static_beforemetadata = '{output}/%s.envfit.raw_metadata' % args.temp_name
     else:
         _static_data = '{output}/%s.envfit.data' % random_str
         _static_dis = '{output}/%s.envfit.dis' % random_str
         _static_metadata = '{output}/%s.envfit.metadata' % random_str
-        _static_postmetadata = '{output}/%s.envfit.postmetadata' % random_str
+        _static_beforemetadata = '{output}/%s.envfit.raw_metadata' % random_str
 
     process_output(output=output)
     main(input=input,
