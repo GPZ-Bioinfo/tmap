@@ -76,9 +76,9 @@ def main(args):
     _cal_type = args.cal_type
     method = args.method
 
-    logger("Loding precomputed graph from \"{}\" ".format(graph), verbose=1)
+    logger("Loading precomputed graph from \"{}\" ".format(graph), verbose=1)
     graph = read_graph(graph, method=method)
-    logger("Start perfoming SAFE analysis", verbose=1)
+    logger("Start performing SAFE analysis", verbose=1)
     result = generate_SAFE_score(graph, metadata, n_iter=n_iter,
                                  pval=pval, nr_threshold=nr_threshold,
                                  _mode=_mode, _cal_type=_cal_type,
@@ -121,12 +121,12 @@ if __name__ == '__main__':
     parser.add_argument("-p", "--pvalue",
                         help="p-val for decide which level of data should consider as significant enriched/declined.",
                         default=0.05, type=float)
-    parser.add_argument("-nt", "--nr_threshold", help="The threshold for deciding the distance from centroide to \
+    parser.add_argument("-nt", "--nr_threshold", help="The threshold for deciding the distance from centroid to \
                                                       neighbours among pairwise distance between all nodes.",
                         type=float, default=0.5)
 
     parser.add_argument("-ft", "--file_type",
-                        help="File type of metadata you provide [csv|xlsx]. Separtor could be tab, comma, or others.",
+                        help="File type of metadata you provide [csv|xlsx]. Separator could be tab, comma, or others.",
                         type=str, default='csv')
     parser.add_argument("--cal_type", help="Normally doesn't change. [df|dict|auto]",
                         type=str, default='df')

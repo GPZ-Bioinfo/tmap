@@ -118,7 +118,7 @@ def write_data(data, prefix, suffix='', mode='df', verbose=1, **kwargs):
         logger("Data with prefix %s has been output." % prefix, verbose=verbose)
     elif mode == 'multidf':
         cols = kwargs['df2cols']
-        logger("There are multiple data matrixs need to output. Inclduing", '\n'.join([os.path.basename(_) for _ in cols.keys()]), verbose=verbose)
+        logger("There are multiple data matrix need to output. Including", '\n'.join([os.path.basename(_) for _ in cols.keys()]), verbose=verbose)
         for name, col in cols.items():
             try:
                 subdata = data.reindex(list(col))

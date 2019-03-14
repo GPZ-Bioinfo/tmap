@@ -3,6 +3,9 @@ envfit_analysis.py -I tmap/test/test_data/FGFP_genus_data.csv -M tmap/test/test_
 
 Network_generator.py -I tmap/test/test_data/FGFP_genus_data.csv -O output/FGFP.graph -v
 
+# you could use quick_vis.py to quickly visualize the graph you generated.
+## quick_vis.py -G output/FGFP.graph -O output/FGFP.html -M output/temp.envfit.metadata -col 'covariate 2'
+
 SAFE_analysis.py both -G output/FGFP.graph -M output/temp.envfit.metadata output/temp.envfit.data -P output/FGFP -i 1000 -p 0.05 --raw -v
 # generate 7 files
 

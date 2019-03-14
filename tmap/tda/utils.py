@@ -67,6 +67,7 @@ def construct_node_data(graph, data):
         node_data = {k: np.mean(data[v, :], axis=0) for k, v in nodes.items()}
         node_data = pd.DataFrame.from_dict(node_data, orient='index')
     return node_data
+
 def prepare_metadata(graph,meta_data):
     if meta_data.shape[0] != len(graph['sample_names']) and meta_data.shape[1] == len(graph['sample_names']):
         print('It may be a transposited matrix. it should be samples X OTU/features. So we will transposited it for you.')

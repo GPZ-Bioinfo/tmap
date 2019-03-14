@@ -23,7 +23,7 @@ def nodes_pairwise_dist(graph):
     return all_pairs_dist
 
 
-def nodes_neighborhood(graph, all_pairs_dist, nr_threshold=0.5):
+def nodes_neighborhood(graph, all_pairs_dist, nr_threshold=0.5,_compare = 'smaller'):
     """
     generate neighborhoods from the graph for all nodes
     :param graph:
@@ -43,7 +43,12 @@ def nodes_neighborhood(graph, all_pairs_dist, nr_threshold=0.5):
     for node_id in graph['nodes']:
         pairs = all_pairs_dist[node_id]
         # node neighborhood also include itself.
-        neighbors = [n for n, dis in pairs.items() if dis <= length_threshold]
+        if _compare == 'smaller':
+            neighbors = [n for n, dis in pairs.items() if dis <= length_threshold]
+        elif _compare == 'larger':
+            neighbors = [n for n, dis in pairs.items() if dis >= length_threshold]
+        else:
+            return
         # neighbors.remove(node_id)
         neighbors = dict([(neighbor_id, node_sizes[neighbor_id][0]) for neighbor_id in neighbors])
         neighborhoods[node_id] = neighbors

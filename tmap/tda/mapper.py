@@ -46,9 +46,9 @@ class Mapper(object):
                 if self.verbose >= 1:
                     print("Filtering by %s." % (_filter.__class__.__name__,))
                     if _filter.metric is not None:
-                        print("...calculate distance matrix using the %s metric." % _filter.metric.name)
+                        print("...calculate Filter(which used to create cover) using the provided %s lens." % _filter.metric.name)
                     else:
-                        print("...calculate distance matrix with default.")
+                        print("...calculate Filter(which used to create cover) with default.")
 
                 if projected_data is None:
                     projected_data = _filter.fit_transform(data)
