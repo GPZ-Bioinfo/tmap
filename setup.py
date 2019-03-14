@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='tmap',
-      version='1.1.2',
+      version='1.1.3',
       description='A topological data analysis framework implementing the TDA Mapper algorithm for population-scale microbiome data analysis ',
       author='Haokui Zhou, Tianhua Liao',
       author_email='zhouhaokui@hotmail.com',

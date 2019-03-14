@@ -31,9 +31,9 @@ def prepare(input, output,metadata, dis, metric, filetype):
     if metadata.shape[1] / metadata.shape[1] >= 5:
         logger("May occur error because of process metadata, it may check carefully... It may wrongly take numerical columns as categorical columns so make dimension explosion. ", verbose=1)
         metadata.to_csv(_static_metadata.format(output=dir_path), sep=',', index=1)
-        post_metadata.to_csv(_static_metadata.format(output=dir_path), sep=',', index=1)
+        post_metadata.to_csv(_static_postmetadata.format(output=dir_path), sep=',', index=1)
     else:
-        post_metadata.to_csv(_static_metadata.format(output=dir_path), sep=',', index=1)
+        post_metadata.to_csv(_static_postmetadata.format(output=dir_path), sep=',', index=1)
 
 
 
@@ -68,7 +68,7 @@ def envfit_metadata(data_path, metadata_path, dist_path, n_iter=500, return_ord=
         return fit_result
 
 
-def main(input, metadata, dis, output, metric, n_iter, filetype, just_pre=False,keep=False, verbose=1):
+def main(input, metadata, dis, output, metric, n_iter, filetype, just_pre=False, keep=True, verbose=1):
     """
     :param input:  file path of input data. It should be csv format or tab format instead of XLSX. Row represents samples, Column represents features(Mostly it may be OTU/Genus).
     :param metadata: file path of metadata data. The number of row must equal to the number of row in `input`. It also should be csv format.
@@ -96,10 +96,11 @@ def main(input, metadata, dis, output, metric, n_iter, filetype, just_pre=False,
         write_data(fit_result, output)
 
     if not keep:
+        logger("removing files...")
         os.remove(_static_dis.format(output=dir_path))
         os.remove(_static_data.format(output=dir_path))
         os.remove(_static_metadata.format(output=dir_path))
-
+        os.remove(_static_postmetadata.format(output=dir_path))
 
 
 if __name__ == '__main__':
@@ -148,12 +149,12 @@ if __name__ == '__main__':
         _static_data = '{output}/%s.envfit.data' % args.temp_name
         _static_dis = '{output}/%s.envfit.dis' % args.temp_name
         _static_metadata = '{output}/%s.envfit.metadata' % args.temp_name
-        _static_metadata = '{output}/%s.envfit.postmetadata' % args.temp_name
+        _static_postmetadata = '{output}/%s.envfit.postmetadata' % args.temp_name
     else:
         _static_data = '{output}/%s.envfit.data' % random_str
         _static_dis = '{output}/%s.envfit.dis' % random_str
         _static_metadata = '{output}/%s.envfit.metadata' % random_str
-        _static_metadata = '{output}/%s.envfit.postmetadata' % random_str
+        _static_postmetadata = '{output}/%s.envfit.postmetadata' % random_str
 
     process_output(output=output)
     main(input=input,
