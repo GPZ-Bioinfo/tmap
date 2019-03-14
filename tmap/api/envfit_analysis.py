@@ -28,11 +28,11 @@ def prepare(input, output,metadata, dis, metric, filetype):
     logger("Output temp file into %s" % _static_dis.format(output=dir_path).strip('.envfit.data'), verbose=1)
     dis.to_csv(_static_dis.format(output=dir_path), sep=',', index=1)
     data.to_csv(_static_data.format(output=dir_path), sep=',', index=1)
-    if metadata.shape[1] / metadata.shape[1] >= 5:
+    if metadata.shape[1] / post_metadata.shape[1] >= 5:
         logger("May occur error because of process metadata, it may check carefully... It may wrongly take numerical columns as categorical columns so make dimension explosion. ", verbose=1)
-        metadata.to_csv(_static_metadata.format(output=dir_path), sep=',', index=1)
         post_metadata.to_csv(_static_postmetadata.format(output=dir_path), sep=',', index=1)
     else:
+        metadata.to_csv(_static_metadata.format(output=dir_path), sep=',', index=1)
         post_metadata.to_csv(_static_postmetadata.format(output=dir_path), sep=',', index=1)
 
 
