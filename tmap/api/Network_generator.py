@@ -88,7 +88,7 @@ def main(input, output, dis=None, _eu_dm=None, metric="braycurtis", eps=95, over
     else:
         # todo : implement a jsonable ndarray.
         dump_graph(graph, output, method=method)
-        logger("Graph has been generated and stored into ", output)
+        logger("Graph has been generated and stored into ", output,verbose=1)
 
 
 if __name__ == '__main__':

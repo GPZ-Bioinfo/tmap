@@ -46,7 +46,7 @@ def draw_PCOA(rawdatas, summary_datas, output, mode='html', width=1500, height=1
                                  marker=dict(  # color=color_codes[cat],
                                      size=mx_scale.transform(vals),
                                      opacity=0.5),
-                                 showlegend=False,
+                                 showlegend=True if len(summary_datas) >1 else False,
                                  text=safe_df.columns[safe_df.columns.isin(each.index)]))
 
     fig.add_trace(go.Scatter(x=pca_result[safe_df.columns.isin(top10_feas), 0],
@@ -72,7 +72,7 @@ def draw_PCOA(rawdatas, summary_datas, output, mode='html', width=1500, height=1
         plotly.offline.plot(fig, filename=output, auto_open=False)
     logger("Ordination graph has been output to",output, verbose=1)
 
-def draw_stratification(graph, SAFE_dict, output, mode='html', n_iter=1000, p_val=0.05, width=1000, height=1000):
+def draw_stratification(graph, SAFE_dict, cols, output, mode='html', n_iter=1000, p_val=0.05, width=1000, height=1000):
     # Enterotyping-like stratification map based on SAFE score
     node_pos = graph["node_positions"]
     sizes = graph["node_sizes"][:, 0]
@@ -96,32 +96,58 @@ def draw_stratification(graph, SAFE_dict, output, mode='html', n_iter=1000, p_va
                     opacity=0.7),
         line=dict(width=1),
         showlegend=False,
+        hoverinfo='skip',
         mode="lines")
     fig.append_trace(node_line, 1, 1)
 
-    safe_score_df = pd.DataFrame.from_dict(SAFE_dict)
+    safe_score_df = pd.DataFrame.from_dict(SAFE_dict)  # row: nodes, columns: features
     min_p_value = 1.0 / (n_iter + 1.0)
     SAFE_pvalue = np.log10(p_val) / np.log10(min_p_value)
-    tmp = [safe_score_df.columns[_] if safe_score_df.iloc[idx, _] > SAFE_pvalue else np.nan for idx, _ in enumerate(np.argmax(safe_score_df.values, axis=1))]
+    tmp = [safe_score_df.columns[_] if safe_score_df.iloc[idx, _] >= SAFE_pvalue else np.nan for idx, _ in enumerate(np.argmax(safe_score_df.values, axis=1))]
+    # get enriched features with biggest SAFE_score per nodes.
     t = Counter(tmp)
-    for idx, fea in enumerate([_ for _, v in sorted(t.items(), key=lambda x: x[1]) if v >= 10]):
-        # safe higher than threshold, just centroides
-        node_position = go.Scatter(
-            # node position
-            visible=True,
-            x=node_pos[np.array(tmp) == fea, 0],
-            y=node_pos[np.array(tmp) == fea, 1],
-            hoverinfo="text",
-            marker=dict(  # color=node_colors,
-                size=[5 + sizes[_] for _ in np.arange(node_pos.shape[0])[np.array(tmp) == fea]],
-                opacity=0.9),
-            showlegend=True,
-            name=fea + ' (%s)' % str(t[fea]),
-            mode="markers")
-        fig.append_trace(node_position, 1, 1)
+    # number of (imp) features among all nodes. (imp: with biggest SAFE score per node compared other features at same node and bigger than p_val)
+    if cols:
+        if any([_ not in safe_score_df.columns for _ in cols]):
+            logger("There are provided cols \" %s\"doesn't at SAFE summary table." % ';'.join(cols), verbose=1)
+        for fea in cols:
+            get_nodes_bool = safe_score_df.loc[:, fea] >= SAFE_pvalue
+            if not all(get_nodes_bool):
+                # if all False....
+                logger("fea: %s get all False bool indicated there are not enriched nodes showed at the graph" % fea,verbose=1)
+            else:
+                node_position = go.Scatter(
+                    # node position
+                    visible=True,
+                    x=node_pos[get_nodes_bool, 0],
+                    y=node_pos[get_nodes_bool, 1],
+                    hoverinfo="text",
+                    marker=dict(  # color=node_colors,
+                        size=[5 + sizes[_] for _ in np.arange(node_pos.shape[0])[get_nodes_bool]],
+                        opacity=0.9),
+                    showlegend=True,
+                    name=str(fea) + ' (%s)' % str(t.get(fea,0)),
+                    mode="markers")
+                fig.append_trace(node_position, 1, 1)
+    else:
+        for idx, fea in enumerate([_ for _, v in sorted(t.items(), key=lambda x: x[1]) if v >= 10]):
+            # safe higher than threshold, just centroides
+            node_position = go.Scatter(
+                # node position
+                visible=True,
+                x=node_pos[np.array(tmp) == fea, 0],
+                y=node_pos[np.array(tmp) == fea, 1],
+                hoverinfo="text",
+                marker=dict(  # color=node_colors,
+                    size=[5 + sizes[_] for _ in np.arange(node_pos.shape[0])[np.array(tmp) == fea]],
+                    opacity=0.9),
+                showlegend=True,
+                name=str(fea) + ' (%s)' % str(t[fea]),
+                mode="markers")
+            fig.append_trace(node_position, 1, 1)
     fig.layout.width = width
     fig.layout.height = height
-    fig.layout.font.size = 30
+    fig.layout.font.size = 15
     fig.layout.hovermode = 'closest'
 
     if mode != 'html' or not output.endswith('html'):
@@ -157,8 +183,12 @@ def draw_ranking(data, cols_dict, output, mode='html', width=1600, height=1400, 
     else:
         fig = tools.make_subplots(1, len(cols_dict), shared_yaxes=True, horizontal_spacing=0, subplot_titles=col_names)
 
-    sorted_df = data.sort_values([_ for _ in data.columns if _.startswith(sort_col)], ascending=False)
-
+    sorted_cols = [_ for _ in data.columns if _.startswith(sort_col)]
+    if not sorted_cols:
+        logger("data you provide doesn't contain columns like %s, Maybe you provide a metadata directly? instead of SAFE summary table." % sort_col,verbose=1)
+        sorted_df = data
+    else:
+        sorted_df = data.sort_values([_ for _ in data.columns if _.startswith(sort_col)], ascending=False)
     def _add_trace(name, col):
         fig.append_trace(go.Bar(x=sorted_df.loc[:, name],
                                 y=sorted_df.index,
@@ -187,14 +217,14 @@ def draw_ranking(data, cols_dict, output, mode='html', width=1600, height=1400, 
     fig.layout.width = width
     fig.layout.height = height
 
-    if mode != 'html' or not output.endswith('html'):
-        pio.write_image(fig, output, format=mode)
-    else:
+    if mode == 'html' or output.endswith('html'):
         plotly.offline.plot(fig, filename=output, auto_open=False)
+    else:
+        pio.write_image(fig, output, format=mode)
     logger("Ranking graph has been output to", output, verbose=1)
 
 def main(args):
-    if args.mission == 'ranking':
+    if args.mission.lower() == 'ranking':
         data, cols_dict = process_summary_paths(args.sum_s)
         draw_ranking(data=data,
                      cols_dict=cols_dict,
@@ -203,20 +233,21 @@ def main(args):
                      height=args.height,
                      width=args.width,
                      sort_col=args.sort)
-    elif args.mission == 'stratification':
+    elif args.mission.lower() == 'stratification':
         dict_data = pickle.load(open(args.SAFE[0], 'rb'))
         safe_dict = dict_data['data']
         n_iter = dict_data['params']['n_iter']
         graph = pickle.load(open(args.graph, 'rb'))
         draw_stratification(graph=graph,
                             SAFE_dict=safe_dict,
+                            cols=args.col,
                             output=args.output,
                             mode=args.type,
                             n_iter=n_iter,
                             p_val=args.pvalue,
                             width=args.width,
                             height=args.height)
-    elif args.mission == 'ordination':
+    elif args.mission.lower() == 'ordination':
         dict_datas = [pickle.load(open(rawSAFE, 'rb')) for rawSAFE in args.SAFE]
         safe_dicts = [dict_data['data'] for dict_data in dict_datas]
         summary_datas = [data_parser(path, verbose=0) for path in args.sum_s]
@@ -246,6 +277,7 @@ if __name__ == '__main__':
                         type=str)
     parser.add_argument("-S2", "--SAFE_summary", dest='sum_s', nargs='*', help="Summary of SAFE scores",
                         type=str)
+    parser.add_argument("--col", nargs='*', help="The features of metadata you want to focus. (could be multiple.) Only useful for stratification")
     parser.add_argument("--sort", help="The column you need to sort with",
                         type=str, default='SAFE enriched score')
     parser.add_argument("-p", "--pvalue",

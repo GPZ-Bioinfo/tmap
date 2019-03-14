@@ -148,5 +148,5 @@ if __name__ == '__main__':
 
     metadata, cols_dict = data_parser(metadata,ft='metadatas')
     process_output(output=prefix)
-
+    args.metadata = metadata
     main(args)
