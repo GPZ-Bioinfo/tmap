@@ -11,6 +11,7 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import MinMaxScaler
 
 from tmap.api.general import *
+from tmap.tda.plot import vis_progressX,Color
 
 
 def draw_PCOA(rawdatas, summary_datas, output, mode='html', width=1500, height=1000, sort_col='SAFE enriched score'):
@@ -72,10 +73,11 @@ def draw_PCOA(rawdatas, summary_datas, output, mode='html', width=1500, height=1
         plotly.offline.plot(fig, filename=output, auto_open=False)
     logger("Ordination graph has been output to",output, verbose=1)
 
-def draw_stratification(graph, SAFE_dict, cols, output, mode='html', n_iter=1000, p_val=0.05, width=1000, height=1000):
+def draw_stratification(graph, SAFE_dict, cols, output, mode='html', n_iter=1000, p_val=0.05, width=1000, height=1000,allnodes=False):
     # Enterotyping-like stratification map based on SAFE score
     node_pos = graph["node_positions"]
     sizes = graph["node_sizes"][:, 0]
+    projected_X = graph.get('accessory_obj',dict()).get('raw_X','')
     xs = []
     ys = []
     for edge in graph["edges"]:
@@ -111,24 +113,35 @@ def draw_stratification(graph, SAFE_dict, cols, output, mode='html', n_iter=1000
         if any([_ not in safe_score_df.columns for _ in cols]):
             logger("There are provided cols \" %s\"doesn't at SAFE summary table." % ';'.join(cols), verbose=1)
         for fea in cols:
-            get_nodes_bool = safe_score_df.loc[:, fea] >= SAFE_pvalue
-            if not all(get_nodes_bool):
-                # if all False....
-                logger("fea: %s get all False bool indicated there are not enriched nodes showed at the graph" % fea,verbose=1)
+            if allnodes:
+                color = Color(SAFE_dict[fea],target_by='node', dtype='numerical')
+                subfig = vis_progressX(graph,
+                                       projected_X=projected_X,
+                                       simple=True,
+                                       mode='obj',
+                                       color=color
+                                       )
+                subfig.data[1]['name'] = fea
+                fig.append_trace(subfig.data[1], 1, 1)
             else:
-                node_position = go.Scatter(
-                    # node position
-                    visible=True,
-                    x=node_pos[get_nodes_bool, 0],
-                    y=node_pos[get_nodes_bool, 1],
-                    hoverinfo="text",
-                    marker=dict(  # color=node_colors,
-                        size=[5 + sizes[_] for _ in np.arange(node_pos.shape[0])[get_nodes_bool]],
-                        opacity=0.9),
-                    showlegend=True,
-                    name=str(fea) + ' (%s)' % str(t.get(fea,0)),
-                    mode="markers")
-                fig.append_trace(node_position, 1, 1)
+                get_nodes_bool = safe_score_df.loc[:, fea] >= SAFE_pvalue
+                if not all(get_nodes_bool):
+                    # if all False....
+                    logger("fea: %s get all False bool indicated there are not enriched nodes showed at the graph" % fea,verbose=1)
+                else:
+                    node_position = go.Scatter(
+                        # node position
+                        visible=True,
+                        x=node_pos[get_nodes_bool, 0],
+                        y=node_pos[get_nodes_bool, 1],
+                        hoverinfo="text",
+                        marker=dict(  # color=node_colors,
+                            size=[5 + sizes[_] for _ in np.arange(node_pos.shape[0])[get_nodes_bool]],
+                            opacity=0.9),
+                        showlegend=True,
+                        name=str(fea) + ' (%s)' % str(t.get(fea,0)),
+                        mode="markers")
+                    fig.append_trace(node_position, 1, 1)
     else:
         for idx, fea in enumerate([_ for _, v in sorted(t.items(), key=lambda x: x[1]) if v >= 10]):
             # safe higher than threshold, just centroides
@@ -246,7 +259,8 @@ def main(args):
                             n_iter=n_iter,
                             p_val=args.pvalue,
                             width=args.width,
-                            height=args.height)
+                            height=args.height,
+                            allnodes=args.allnodes)
     elif args.mission.lower() == 'ordination':
         dict_datas = [pickle.load(open(rawSAFE, 'rb')) for rawSAFE in args.SAFE]
         safe_dicts = [dict_data['data'] for dict_data in dict_datas]
@@ -289,6 +303,8 @@ if __name__ == '__main__':
                         type=int, default=1600)
     parser.add_argument("--height", help="The width of output picture",
                         type=int, default=1600)
+    parser.add_argument("--allnodes", help="draw all nodes with provided columns as color instead of enriched one. \nOnly useful for stratification",
+                        action="store_true")
     args = parser.parse_args()
 
     process_output(output=args.output)

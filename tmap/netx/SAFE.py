@@ -4,7 +4,7 @@ import pandas as pd
 from statsmodels.sandbox.stats.multicomp import multipletests
 from tqdm import tqdm
 
-from tmap.tda.utils import construct_node_data
+from tmap.tda.utils import construct_node_data,prepare_metadata
 
 
 def nodes_pairwise_dist(graph):
@@ -151,8 +151,9 @@ def _SAFE(graph, node_data, n_iter=1000, nr_threshold=0.5, all_dist=None, neighb
             p_data = p_data.apply(lambda col: np.random.permutation(col), axis=0)
             p_neighborhood_scores = nodes_neighborhood_score(neighborhoods, p_data, cal_mode=cal_mode)
 
-            neighborhood_enrichments[p_neighborhood_scores >= neighborhood_scores] += 1
-            neighborhood_decline[p_neighborhood_scores <= neighborhood_scores] += 1
+            neighborhood_enrichments[p_neighborhood_scores > neighborhood_scores] += 1
+            # important change!!! change '>=' to '>'. Remove '=' because it will significantly affect by number bias. Below also...
+            neighborhood_decline[p_neighborhood_scores < neighborhood_scores] += 1
 
         safe_scores_enrich = convertor(neighborhood_enrichments, node_data, n_iter, cal_mode=cal_mode)
         safe_scores_decline = convertor(neighborhood_decline, node_data, n_iter, cal_mode=cal_mode)
@@ -167,9 +168,9 @@ def _SAFE(graph, node_data, n_iter=1000, nr_threshold=0.5, all_dist=None, neighb
             p_data = dict(zip(node_data.keys(), np.random.permutation(list(node_data.values()))))
             p_neighborhood_scores = nodes_neighborhood_score(neighborhoods, p_data, cal_mode=cal_mode)
             for k in neighborhood_enrichments.keys():
-                if p_neighborhood_scores[k] >= neighborhood_scores[k]:
+                if p_neighborhood_scores[k] > neighborhood_scores[k]:
                     neighborhood_enrichments[k] += 1
-                elif p_neighborhood_scores[k] <= neighborhood_scores[k]:
+                elif p_neighborhood_scores[k] < neighborhood_scores[k]:
                     neighborhood_decline[k] += 1
 
         safe_scores_enrich = convertor(neighborhood_enrichments, node_data, n_iter, cal_mode=cal_mode)[0]
@@ -191,7 +192,7 @@ def SAFE_batch(graph, meta_data, n_iter=1000, nr_threshold=0.5, shuffle_obj="nod
     For more information, you should see :doc:`how2work`
 
     :param dict graph:
-    :param np.ndarry/pd.DataFrame meta_data:
+    :param np.ndarray/pd.DataFrame meta_data:
     :param int n_iter: Permutation times. For some features with skewness values, it should be higher in order to stabilize the resulting SAFE score.
     :param float nr_threshold: Float in range of [0,100]. The threshold is used to cut path distance with percentiles
     :return: return dict ``{feature: {node_ID:p-values(fdr)} }`` .
@@ -199,10 +200,14 @@ def SAFE_batch(graph, meta_data, n_iter=1000, nr_threshold=0.5, shuffle_obj="nod
     all_pairs_dist = nodes_pairwise_dist(graph)
     neighborhoods = nodes_neighborhood(graph, all_pairs_dist, nr_threshold=nr_threshold)
 
-    if meta_data.shape[0] != len(graph["nodes"]):
+    meta_data = prepare_metadata(graph,meta_data)
+
+    if meta_data.shape[0] != len(graph["nodes"]) and meta_data.shape[0] == len(graph['sample_names']):
         node_data = construct_node_data(graph, meta_data)
-    else:
+    elif meta_data.shape[0] == len(graph["nodes"]):
         node_data = meta_data
+    else:
+        raise SyntaxError("Wrong metadata provided. row should be samples(even the column isn't sample)...(Wrong number detected)")
 
     if verbose == 0:
         iter_obj = meta_data.columns
