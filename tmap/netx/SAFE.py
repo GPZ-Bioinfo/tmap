@@ -235,7 +235,7 @@ def SAFE_batch(graph, meta_data, n_iter=1000, nr_threshold=0.5, shuffle_obj="nod
         _safe = {}
         for feature in iter_obj:
             safe_scores = _SAFE(graph,
-                                node_data,
+                                node_data[feature],
                                 n_iter=n_iter,
                                 nr_threshold=nr_threshold,
                                 all_dist=all_pairs_dist,

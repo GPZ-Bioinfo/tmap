@@ -122,6 +122,7 @@ def write_data(data, prefix, suffix='', mode='df', verbose=1, **kwargs):
         for name, col in cols.items():
             try:
                 subdata = data.reindex(list(col))
+                os.makedirs(prefix + name.rsplit('/', 1)[0], exist_ok=True)
                 subdata.to_csv(prefix + '_%s.csv' % '_'.join([name, suffix]), sep=',', index=1)
             except:
                 import pdb;pdb.set_trace()
