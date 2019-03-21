@@ -1,6 +1,7 @@
 #! /usr/bin/python3
 import argparse
 import pickle
+import copy
 import time
 
 import pandas as pd
@@ -45,9 +46,9 @@ def generate_SAFE_score(graph, metadata, n_iter=1000, pval=0.05, nr_threshold=0.
         declined_SAFE_summary = get_SAFE_summary(graph=graph, meta_data=metadata, safe_scores=declined_SAFE,
                                                  n_iter_value=n_iter, p_value=pval)
         _pickle_safe_format['data'] = enriched_SAFE
-        collect_result['raw']['enrich'] = _pickle_safe_format
+        collect_result['raw']['enrich'] = copy.deepcopy(_pickle_safe_format)
         _pickle_safe_format['data'] = declined_SAFE
-        collect_result['raw']['decline'] = _pickle_safe_format
+        collect_result['raw']['decline'] = copy.deepcopy(_pickle_safe_format)
         collect_result['enrich'] = enriched_SAFE_summary.sort_values('SAFE enriched score', ascending=False)
         collect_result['decline'] = declined_SAFE_summary.sort_values('SAFE enriched score', ascending=False)
     else:
@@ -56,8 +57,8 @@ def generate_SAFE_score(graph, metadata, n_iter=1000, pval=0.05, nr_threshold=0.
         SAFE_summary = get_SAFE_summary(graph=graph, meta_data=metadata, safe_scores=SAFE_data,
                                         n_iter_value=n_iter, p_value=pval)
         _pickle_safe_format['data'] = SAFE_data
-        collect_result['raw']['enrich'] = _pickle_safe_format
-        collect_result['raw']['decline'] = _pickle_safe_format
+        collect_result['raw']['enrich'] = copy.deepcopy(_pickle_safe_format)
+        collect_result['raw']['decline'] = copy.deepcopy(_pickle_safe_format)
         collect_result['enrich'] = SAFE_summary.sort_values('SAFE enriched score', ascending=False)
         collect_result['decline'] = SAFE_summary.sort_values('SAFE enriched score', ascending=False)
     return collect_result
