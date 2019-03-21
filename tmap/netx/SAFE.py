@@ -156,9 +156,9 @@ def _SAFE(graph, node_data, n_iter=1000, nr_threshold=0.5, all_dist=None, neighb
             p_data = p_data.apply(lambda col: np.random.permutation(col), axis=0)
             p_neighborhood_scores = nodes_neighborhood_score(neighborhoods, p_data, cal_mode=cal_mode)
 
-            neighborhood_enrichments[p_neighborhood_scores > neighborhood_scores] += 1
+            neighborhood_enrichments[p_neighborhood_scores >= neighborhood_scores] += 1
             # important change!!! change '>=' to '>'. Remove '=' because it will significantly affect by number bias. Below also...
-            neighborhood_decline[p_neighborhood_scores < neighborhood_scores] += 1
+            neighborhood_decline[p_neighborhood_scores <= neighborhood_scores] += 1
 
         safe_scores_enrich = convertor(neighborhood_enrichments, node_data, n_iter, cal_mode=cal_mode)
         safe_scores_decline = convertor(neighborhood_decline, node_data, n_iter, cal_mode=cal_mode)
@@ -173,9 +173,9 @@ def _SAFE(graph, node_data, n_iter=1000, nr_threshold=0.5, all_dist=None, neighb
             p_data = dict(zip(node_data.keys(), np.random.permutation(list(node_data.values()))))
             p_neighborhood_scores = nodes_neighborhood_score(neighborhoods, p_data, cal_mode=cal_mode)
             for k in neighborhood_enrichments.keys():
-                if p_neighborhood_scores[k] > neighborhood_scores[k]:
+                if p_neighborhood_scores[k] >= neighborhood_scores[k]:
                     neighborhood_enrichments[k] += 1
-                elif p_neighborhood_scores[k] < neighborhood_scores[k]:
+                elif p_neighborhood_scores[k] <= neighborhood_scores[k]:
                     neighborhood_decline[k] += 1
 
         safe_scores_enrich = convertor(neighborhood_enrichments, node_data, n_iter, cal_mode=cal_mode)[0]
