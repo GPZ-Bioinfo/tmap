@@ -402,7 +402,7 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
     mms_color = MinMaxScaler(feature_range=[0, 1])
 
     # init some empty values if color wasn't given
-    target_v_raw = ['' for _ in nodes]
+    target_v_raw = [0 for _ in nodes]
     target_v = [0 for _ in nodes]
     samples_colors = ['red' for _ in sample_names]
 
@@ -463,7 +463,7 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
         node_colors = [color_map.get(_, 'blue') for _ in range(len(nodes))]
 
     # prepare node & samples text
-    node_vis_vals = target_v_raw if _color_SAFE is not None else np.array([0]*len(nodes)) # todo: test categorical color passed.
+    node_vis_vals = target_v_raw # todo: test categorical color passed.
     # values output from color.target. It need to apply mean function for a samples-length color.target.
     node_text = [str(n) +
                  # node id

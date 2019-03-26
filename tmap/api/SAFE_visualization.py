@@ -77,6 +77,7 @@ def draw_stratification(graph, SAFE_dict, cols, output, mode='html', n_iter=1000
     # Enterotyping-like stratification map based on SAFE score
     node_pos = graph["node_positions"]
     sizes = graph["node_sizes"][:, 0]
+    transformed_sizes = MinMaxScaler().fit_transform(sizes.reshape(-1,1)).ravel()
     projected_X = graph.get('accessory_obj',dict()).get('raw_X','')
     xs = []
     ys = []
@@ -152,7 +153,7 @@ def draw_stratification(graph, SAFE_dict, cols, output, mode='html', n_iter=1000
                 y=node_pos[np.array(tmp) == fea, 1],
                 hoverinfo="text",
                 marker=dict(  # color=node_colors,
-                    size=[5 + sizes[_] for _ in np.arange(node_pos.shape[0])[np.array(tmp) == fea]],
+                    size=[5 + transformed_sizes[_] for _ in np.arange(node_pos.shape[0])[np.array(tmp) == fea]],
                     opacity=0.9),
                 showlegend=True,
                 name=str(fea) + ' (%s)' % str(t[fea]),

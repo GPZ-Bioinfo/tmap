@@ -1,4 +1,11 @@
+import sys
+
 from setuptools import setup, find_packages
+
+if sys.version_info < (3, 5):
+    sys.exit("tmap can only be used with Python 3. You are currently "
+             "running Python %d." % sys.version_info.major)
+
 
 setup(name='tmap',
       version='1.1.3',
@@ -17,7 +24,8 @@ setup(name='tmap',
                'tmap/api/SAFE_analysis.py',
                'tmap/api/SAFE_visualization.py',
                'tmap/api/quick_vis.py'],
-      install_requires=[# 'scikit-bio>=0.5.2',
+      extras_require={'alldeps': ('numpy')},
+      install_requires=['scikit-bio',
                         'statsmodels>=0.9.0',
                         'tqdm',
                         'scikit-learn>=0.19.1',
@@ -27,7 +35,6 @@ setup(name='tmap',
                         'scipy',
                         'matplotlib!=3.0.0rc2',
                         'umap-learn',
-                        'numpy<1.14.0,>=1.9.2',
                         'rpy2',
                         'plotly',
                         ],
