@@ -11,6 +11,8 @@ __pycache__/
 # removes files
 # FGFP_metadata.tsv
 # FGFP_metadata_ready.tsv
+check_doc_code.py
+
 # C extensions
 *.so
 
