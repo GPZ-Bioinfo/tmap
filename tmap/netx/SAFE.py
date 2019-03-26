@@ -157,7 +157,6 @@ def _SAFE(graph, node_data, n_iter=1000, nr_threshold=0.5, all_dist=None, neighb
             p_neighborhood_scores = nodes_neighborhood_score(neighborhoods, p_data, cal_mode=cal_mode)
 
             neighborhood_enrichments[p_neighborhood_scores >= neighborhood_scores] += 1
-            # important change!!! change '>=' to '>'. Remove '=' because it will significantly affect by number bias. Below also...
             neighborhood_decline[p_neighborhood_scores <= neighborhood_scores] += 1
 
         safe_scores_enrich = convertor(neighborhood_enrichments, node_data, n_iter, cal_mode=cal_mode)

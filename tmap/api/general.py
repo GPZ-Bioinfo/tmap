@@ -46,7 +46,7 @@ def data_parser(path, ft='csv', verbose=1, **kwargs):
             datas = [data_parser(_,ft='csv',verbose=0) for _ in path]
             assert len(set([tuple(_.index) for _ in datas])) == 1  # all datas must have same samples
             merged_data = pd.concat(datas, axis=1)
-            col_dict = {p:list(data.columns) for p,data in zip(path,datas)}
+            col_dict = {p: list(data.columns) for p, data in zip(path,datas)}
             return merged_data, col_dict
         else:
             df = pd.read_excel(path, index_col=0, header=0, **kwargs)
@@ -118,14 +118,12 @@ def write_data(data, prefix, suffix='', mode='df', verbose=1, **kwargs):
         logger("Data with prefix %s has been output." % prefix, verbose=verbose)
     elif mode == 'multidf':
         cols = kwargs['df2cols']
-        logger("There are multiple data matrix need to output. Including", '\n'.join([os.path.basename(_) for _ in cols.keys()]), verbose=verbose)
+        logger("There are multiple data matrix need to output. Including", '\n'.join([os.path.basename(name) for name in cols.keys()]), verbose=verbose)
         for name, col in cols.items():
-            try:
-                subdata = data.reindex(list(col))
-                os.makedirs(prefix + name.rsplit('/', 1)[0], exist_ok=True)
-                subdata.to_csv(prefix + '_%s.csv' % '_'.join([name, suffix]), sep=',', index=1)
-            except:
-                import pdb;pdb.set_trace()
+            subdata = data.reindex(list(col))
+            name = os.path.basename(name)
+            subdata.to_csv(prefix + '_%s.csv' % '_'.join([name, suffix]), sep=',', index=1)
         logger("Data with prefix %s has been output." % prefix, verbose=verbose)
     elif mode == 'html':
         pass
+        # todo

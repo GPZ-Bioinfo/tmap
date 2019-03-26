@@ -22,7 +22,7 @@ def preprocess_metadata(paths, filetype='csv', ):
         logger("Accepting multiple metadata files, but with different number of row.", verbose=1)
         return
     else:
-        cols_dict = {os.path.basename(path): df.columns for path, df in zip(paths, datas)}
+        cols_dict = {os.path.basename(path): list(df.columns) for path, df in zip(paths, datas)}
         data = pd.concat(datas, axis=1)
         # if [col for col in data.columns if is_categorical_dtype(data.loc[:, col])]:
         #     data = process_metadata_beta()

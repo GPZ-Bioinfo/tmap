@@ -11,7 +11,7 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import MinMaxScaler
 
 from tmap.api.general import *
-from tmap.tda.plot import vis_progressX,Color
+from tmap.tda.plot import vis_progressX, Color
 
 
 def draw_PCOA(rawdatas, summary_datas, output, mode='html', width=1500, height=1000, sort_col='SAFE enriched score'):
@@ -47,7 +47,7 @@ def draw_PCOA(rawdatas, summary_datas, output, mode='html', width=1500, height=1
                                  marker=dict(  # color=color_codes[cat],
                                      size=mx_scale.transform(vals),
                                      opacity=0.5),
-                                 showlegend=True if len(summary_datas) >1 else False,
+                                 showlegend=True if len(summary_datas) > 1 else False,
                                  text=safe_df.columns[safe_df.columns.isin(each.index)]))
 
     fig.add_trace(go.Scatter(x=pca_result[safe_df.columns.isin(top10_feas), 0],
@@ -71,14 +71,15 @@ def draw_PCOA(rawdatas, summary_datas, output, mode='html', width=1500, height=1
         pio.write_image(fig, output, format=mode)
     else:
         plotly.offline.plot(fig, filename=output, auto_open=False)
-    logger("Ordination graph has been output to",output, verbose=1)
+    logger("Ordination graph has been output to", output, verbose=1)
 
-def draw_stratification(graph, SAFE_dict, cols, output, mode='html', n_iter=1000, p_val=0.05, width=1000, height=1000,allnodes=False):
+
+def draw_stratification(graph, SAFE_dict, cols, output, mode='html', n_iter=1000, p_val=0.05, width=1000, height=1000, allnodes=False):
     # Enterotyping-like stratification map based on SAFE score
     node_pos = graph["node_positions"]
     sizes = graph["node_sizes"][:, 0]
-    transformed_sizes = MinMaxScaler().fit_transform(sizes.reshape(-1,1)).ravel()
-    projected_X = graph.get('accessory_obj',dict()).get('raw_X','')
+    transformed_sizes = MinMaxScaler(feature_range=(10, 40)).fit_transform(sizes.reshape(-1, 1)).ravel()
+    projected_X = graph.get('accessory_obj', dict()).get('raw_X', '')
     xs = []
     ys = []
     for edge in graph["edges"]:
@@ -115,7 +116,7 @@ def draw_stratification(graph, SAFE_dict, cols, output, mode='html', n_iter=1000
             logger("There are provided cols \" %s\"doesn't at SAFE summary table." % ';'.join(cols), verbose=1)
         for fea in cols:
             if allnodes:
-                color = Color(SAFE_dict[fea],target_by='node', dtype='numerical')
+                color = Color(SAFE_dict[fea], target_by='node', dtype='numerical')
                 subfig = vis_progressX(graph,
                                        projected_X=projected_X,
                                        simple=True,
@@ -128,7 +129,7 @@ def draw_stratification(graph, SAFE_dict, cols, output, mode='html', n_iter=1000
                 get_nodes_bool = safe_score_df.loc[:, fea] >= SAFE_pvalue
                 if not all(get_nodes_bool):
                     # if all False....
-                    logger("fea: %s get all False bool indicated there are not enriched nodes showed at the graph" % fea,verbose=1)
+                    logger("fea: %s get all False bool indicated there are not enriched nodes showed at the graph" % fea, verbose=1)
                 else:
                     node_position = go.Scatter(
                         # node position
@@ -140,7 +141,7 @@ def draw_stratification(graph, SAFE_dict, cols, output, mode='html', n_iter=1000
                             size=[5 + sizes[_] for _ in np.arange(node_pos.shape[0])[get_nodes_bool]],
                             opacity=0.9),
                         showlegend=True,
-                        name=str(fea) + ' (%s)' % str(t.get(fea,0)),
+                        name=str(fea) + ' (%s)' % str(t.get(fea, 0)),
                         mode="markers")
                     fig.append_trace(node_position, 1, 1)
     else:
@@ -170,20 +171,16 @@ def draw_stratification(graph, SAFE_dict, cols, output, mode='html', n_iter=1000
         plotly.offline.plot(fig, filename=output, auto_open=False)
     logger("Stratification graph has been output to", output, verbose=1)
 
+
 def process_summary_paths(safe_summaries):
     datas = [data_parser(path, verbose=0) for path in safe_summaries]
     if len(datas) > 1:
-        if len(set.union(*[set(_.index) for _ in datas])) != datas[0].shape[0]:
-            # if different index between datas
-            logger("Different index found between multiple input SAFE summary files...", verbose=1)
-            return
-        else:
-            cols_dict = {}
-            for path, data in zip(safe_summaries, datas):
-                name = os.path.basename(path).strip('.csv')
-                data.columns = ['%s (%s)' % (col, name) for col in data.columns]
-                cols_dict[name] = data.columns
-            data = pd.concat(datas, axis=1)
+        cols_dict = {}
+        for path, data in zip(safe_summaries, datas):
+            name = os.path.basename(path).strip('.csv')
+            data.columns = ['%s (%s)' % (col, name) for col in data.columns]
+            cols_dict[name] = list(data.columns)
+        data = pd.concat(datas, axis=0)
     else:
         data = datas[0]
         cols_dict = {'Only one df': data.columns}
@@ -199,10 +196,11 @@ def draw_ranking(data, cols_dict, output, mode='html', width=1600, height=1400, 
 
     sorted_cols = [_ for _ in data.columns if _.startswith(sort_col)]
     if not sorted_cols:
-        logger("data you provide doesn't contain columns like %s, Maybe you provide a metadata directly? instead of SAFE summary table." % sort_col,verbose=1)
+        logger("data you provide doesn't contain columns like %s, Maybe you provide a metadata directly? instead of SAFE summary table." % sort_col, verbose=1)
         sorted_df = data
     else:
         sorted_df = data.sort_values([_ for _ in data.columns if _.startswith(sort_col)], ascending=False)
+
     def _add_trace(name, col):
         fig.append_trace(go.Bar(x=sorted_df.loc[:, name],
                                 y=sorted_df.index,
@@ -236,6 +234,7 @@ def draw_ranking(data, cols_dict, output, mode='html', width=1600, height=1400, 
     else:
         pio.write_image(fig, output, format=mode)
     logger("Ranking graph has been output to", output, verbose=1)
+
 
 def main(args):
     if args.mission.lower() == 'ranking':

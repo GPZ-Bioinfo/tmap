@@ -5,7 +5,8 @@ from distutils.command.clean import clean as Clean
 
 from setuptools import setup, find_packages
 
-if sys.version_info < (3, 5):
+
+if sys.version_info < (3, 0):
     sys.exit("tmap can only be used with Python 3. You are currently "
              "running Python %d." % sys.version_info.major)
 

@@ -42,6 +42,7 @@ def Daily_metadata_ready():
     metadata = pd.read_csv(os.path.join(os.path.dirname(base_path), "test_data", 'Daily_metadata.csv'),
                            sep=',', index_col=0, header=0)
     return metadata
+
 #
 # def FGFP_metadata_process():
 #     metadata = pd.read_csv(os.path.join(os.path.dirname(base_path), "test_data", 'FGFP_metadata.tsv'),
