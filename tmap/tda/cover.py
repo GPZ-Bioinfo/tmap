@@ -33,7 +33,6 @@ class Cover(object):
             exit(1)
         self.n_points, self.n_dimensions = projected_data.shape
         self.data = projected_data
-
         # upper and lower bounds, chunk and overlap for each dimension of the projected space
         self.floor, self.roof = (np.min(projected_data, axis=0), np.max(projected_data, axis=0))
         self.chunk_width = (self.roof - self.floor) / resolution

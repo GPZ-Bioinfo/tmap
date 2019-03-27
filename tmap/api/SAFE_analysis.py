@@ -15,7 +15,6 @@ _pickle_safe_format = {'data': '',
                        'params': {"n_iter": 0,
                                   "nr_threshold": 0}}
 
-
 def preprocess_metadata(paths, filetype='csv', ):
     datas = [data_parser(path, ft=filetype, verbose=0) for path in paths]
     if len(set([_.shape[0] for _ in datas])) != 1:

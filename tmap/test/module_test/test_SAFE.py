@@ -28,28 +28,6 @@ eps = optimize_dbscan_eps(X, threshold=95)
 clusterer = DBSCAN(eps=eps, min_samples=3)
 cover = Cover(projected_data=MinMaxScaler().fit_transform(projected_X), resolution=50, overlap=0.75)
 graph = tm.map(data=X, cover=cover, clusterer=clusterer)
-graph
 
-## Step 6. SAFE test for every features.
-
-# target_feature = 'Faecalibacterium'
-# target_feature = 'Prevotella'
-target_feature = 'Bacteroides'
-n_iter = 1000
-safe_scores = SAFE_batch(graph, meta_data=X, n_iter=n_iter)
-target_safe_score = safe_scores[target_feature]
-
-# target_safe_score = SAFE_single(graph, X.loc[:, target_feature], n_iter=1000, threshold=0.05)
-
-## Step 7. Visualization
-
-# colors by samples (target values in a list)
-color = Color(target=X.loc[:, target_feature], dtype="numerical", target_by="sample")
-show(data=X, graph=graph, color=color, fig_size=(10, 10), node_size=15, mode='spring', strength=0.08)
-
-# colors by nodes (target values in a dictionary)
-color = Color(target=target_safe_score, dtype="numerical", target_by="node")
-show(data=X, graph=graph, color=color, fig_size=(10, 10), node_size=15, mode='spring', strength=0.08)
-
-safe_summary = get_SAFE_summary(graph=graph, meta_data=X, safe_scores=safe_scores,
-                                n_iter_value=n_iter, p_value=0.01)
+#prepare graph
+############################################################

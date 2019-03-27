@@ -14,7 +14,6 @@ from scipy import stats
 from sklearn import decomposition
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler, maxabs_scale
 
-from tmap.netx.SAFE import construct_node_data
 from tmap.netx.SAFE import get_enriched_nodes
 
 
@@ -338,11 +337,11 @@ def show(data, graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2,
     plt.show()
 
 
-def get_arrows(graph, projected_X, safe_score, max_length=1, pvalue=0.05):
+def get_arrows(graph, safe_score, max_length=1, pvalue=0.05):
     min_p_value = 1.0 / (5000 + 1.0)
     threshold = np.log10(pvalue) / np.log10(min_p_value)
 
-    node_pos = construct_node_data(graph, projected_X)
+    node_pos = graph.nodePos
 
     safe_score_df = pd.DataFrame.from_dict(safe_score, orient='columns')
     safe_score_df = safe_score_df.where(safe_score_df >= threshold, other=0)

@@ -51,12 +51,6 @@ def generate_graph(input_data, dis=None, _eu_dm=None, eps_threshold=95, overlap=
     graph = tm.map(data=input_data, cover=cover, clusterer=clusterer)
     logger('Graph covers %.2f percentage of samples.' % cover_ratio(graph, input_data), verbose=verbose)
     logger("graph generator take: ", time.time() - t1, verbose=verbose)
-
-    accessory_obj = {'raw_X': projected_X,
-                     'cover': cover,
-                     'clusterer': clusterer,
-                     'input_data': input_data}
-    graph['accessory_obj'] = accessory_obj
     return graph
 
 

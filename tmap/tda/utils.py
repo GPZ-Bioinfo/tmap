@@ -57,16 +57,42 @@ def optimal_r(X, projected_X, clusterer, mid, overlap, step=1):
     print("suitable resolution is ", mid)
     return mid
 
-
-def construct_node_data(graph, data):
-    nodes = graph['nodes']
-    if "iloc" in dir(data):
-        node_data = {k: data.iloc[v, :].mean() for k, v in nodes.items()}
-        node_data = pd.DataFrame.from_dict(node_data, orient='index', columns=data.columns)
+def unify_data(data):
+    if 'iloc' in dir(data):
+        # pd.DataFrame
+        return data
+    elif type(data) == list:
+        # list
+        return pd.DataFrame(data)
+    elif isinstance(data,np.ndarray):
+        return pd.DataFrame(data)
+    elif type(data) == dict:
+        return pd.DataFrame.from_dict(data,orient='index')
     else:
-        node_data = {k: np.mean(data[v, :], axis=0) for k, v in nodes.items()}
-        node_data = pd.DataFrame.from_dict(node_data, orient='index')
-    return node_data
+        print('Unkown data type')
+        return
+
+def transform2node_data(graph, data):
+    nodes = graph.nodes
+    data = unify_data(data)
+    if data is not None:
+        node_data = {nid: data.iloc[attr['sample'], :].mean() for nid, attr in nodes.items()}
+        node_data = pd.DataFrame.from_dict(node_data, orient='index', columns=data.columns)
+        return node_data
+
+def transform2sample_data(graph,data):
+    nodes = graph.nodes
+    rawdata = unify_data(data)
+    datas = []
+    if rawdata is not None:
+        for nid, attr in nodes.items():
+            cache = [rawdata.loc[[nid],:]]* len(attr['sample'])
+            cache = pd.concat(cache)
+            cache.index = list(attr['sample'])
+            datas.append(cache)
+        sample_data = pd.concat(datas,axis=0)
+        # todo: average the same index id row. result is larger than the number of origin sample
+        return sample_data
 
 def prepare_metadata(graph,meta_data):
     if meta_data.shape[0] != len(graph['sample_names']) and meta_data.shape[1] == len(graph['sample_names']):
@@ -103,16 +129,6 @@ def get_pos(graph, strength):
         pos.update({int(k): node_positions[i, :2]})
     pos = nx.spring_layout(G, pos=pos, k=strength)
     return pos
-
-
-## Access inner attribute
-
-def cover_ratio(graph, data):
-    nodes = graph['nodes']
-    all_samples_in_nodes = [_ for vals in nodes.values() for _ in vals]
-    n_all_sampels = data.shape[0]
-    n_in_nodes = len(set(all_samples_in_nodes))
-    return n_in_nodes / float(n_all_sampels) * 100
 
 
 ## Export data as file

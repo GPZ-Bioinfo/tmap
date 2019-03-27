@@ -4,55 +4,39 @@ import pandas as pd
 from statsmodels.sandbox.stats.multicomp import multipletests
 from tqdm import tqdm
 
-from tmap.tda.utils import construct_node_data,prepare_metadata
+from tmap.tda.utils import prepare_metadata
 
-
-def nodes_pairwise_dist(graph):
-    """
-    get all pairwise node distance, including self-distance of 0
-    :param graph:
-    :return: return a nested dictionary (dict of dict) of pairwise distance
-    """
-    G = nx.Graph()
-    G.add_nodes_from(graph['nodes'].keys())
-    G.add_edges_from(graph['edges'])
-
-    all_pairs_dist = nx.all_pairs_shortest_path_length(G)
-    if not isinstance(all_pairs_dist, dict):
-        all_pairs_dist = dict(all_pairs_dist)
-    return all_pairs_dist
-
-
-def nodes_neighborhood(graph, all_pairs_dist, nr_threshold=0.5,_compare = 'smaller'):
-    """
-    generate neighborhoods from the graph for all nodes
-    :param graph:
-    :param nr_threshold: Float in range of [0,100]. The threshold is used to cut path distance with percentiles. nr means neighbour
-    :return: return a dict with keys of nodes, values is a list of tuple (another node id, its sizes).
-    """
-    node_sizes = dict(zip(graph['node_keys'], graph['node_sizes']))
-
-    # generate all pairwise shortest path length (duplicated!!! but is OK for percentile statistics)
-    all_length = [_ for it in all_pairs_dist.values() for _ in it.values()]
-    # remove self-distance (that is 0)
-    all_length = [_ for _ in all_length if _ > 0]
-    length_threshold = np.percentile(all_length, nr_threshold)
-    # print('Maximum path length threshold is set to be %s' % (length_threshold,))
-
-    neighborhoods = {}
-    for node_id in graph['nodes']:
-        pairs = all_pairs_dist[node_id]
-        # node neighborhood also include itself.
-        if _compare == 'smaller':
-            neighbors = [n for n, dis in pairs.items() if dis <= length_threshold]
-        elif _compare == 'larger':
-            neighbors = [n for n, dis in pairs.items() if dis >= length_threshold]
-        else:
-            return
-        # neighbors.remove(node_id)
-        neighbors = dict([(neighbor_id, node_sizes[neighbor_id][0]) for neighbor_id in neighbors])
-        neighborhoods[node_id] = neighbors
-    return neighborhoods
+#
+# def nodes_neighborhood(graph, all_pairs_dist, nr_threshold=0.5,_compare = 'smaller'):
+#     """
+#     generate neighborhoods from the graph for all nodes
+#     :param graph:
+#     :param nr_threshold: Float in range of [0,100]. The threshold is used to cut path distance with percentiles. nr means neighbour
+#     :return: return a dict with keys of nodes, values is a list of tuple (another node id, its sizes).
+#     """
+#     node_sizes = dict(zip(graph['node_keys'], graph['node_sizes']))
+#
+#     # generate all pairwise shortest path length (duplicated!!! but is OK for percentile statistics)
+#     all_length = [_ for it in all_pairs_dist.values() for _ in it.values()]
+#     # remove self-distance (that is 0)
+#     all_length = [_ for _ in all_length if _ > 0]
+#     length_threshold = np.percentile(all_length, nr_threshold)
+#     # print('Maximum path length threshold is set to be %s' % (length_threshold,))
+#
+#     neighborhoods = {}
+#     for node_id in graph['nodes']:
+#         pairs = all_pairs_dist[node_id]
+#         # node neighborhood also include itself.
+#         if _compare == 'smaller':
+#             neighbors = [n for n, dis in pairs.items() if dis <= length_threshold]
+#         elif _compare == 'larger':
+#             neighbors = [n for n, dis in pairs.items() if dis >= length_threshold]
+#         else:
+#             return
+#         # neighbors.remove(node_id)
+#         neighbors = dict([(neighbor_id, node_sizes[neighbor_id][0]) for neighbor_id in neighbors])
+#         neighborhoods[node_id] = neighbors
+#     return neighborhoods
 
 
 def nodes_neighborhood_score(neighborhoods, node_data, cal_mode="df", _mode='sum'):
@@ -93,7 +77,7 @@ def nodes_neighborhood_score(neighborhoods, node_data, cal_mode="df", _mode='sum
 
 def convertor(compared_count, node_data, n_iter, cal_mode="df"):
     """
-    Using the number of times from comparison between observed values and shuffled values to calculated SAFE score.
+    Using 'the number of times' between observed values and shuffled values to calculated SAFE score.
     (Multi-test corrected)
     :param compared_count:
     :param node_data:
@@ -195,7 +179,7 @@ def SAFE_batch(graph, meta_data, n_iter=1000, nr_threshold=0.5, shuffle_obj="nod
 
     For more information, you should see :doc:`how2work`
 
-    :param dict graph:
+    :param Graph graph:
     :param np.ndarray/pd.DataFrame meta_data:
     :param int n_iter: Permutation times. For some features with skewness values, it should be higher in order to stabilize the resulting SAFE score.
     :param float nr_threshold: Float in range of [0,100]. The threshold is used to cut path distance with percentiles
@@ -207,7 +191,8 @@ def SAFE_batch(graph, meta_data, n_iter=1000, nr_threshold=0.5, shuffle_obj="nod
     meta_data = prepare_metadata(graph,meta_data)
 
     if meta_data.shape[0] != len(graph["nodes"]) and meta_data.shape[0] == len(graph['sample_names']):
-        node_data = construct_node_data(graph, meta_data)
+        node_data = graph.transform_sn(meta_data,type='s2n')
+
     elif meta_data.shape[0] == len(graph["nodes"]):
         node_data = meta_data
     else:

@@ -6,7 +6,7 @@ from sklearn.preprocessing import MinMaxScaler
 from tmap.tda import mapper, Filter
 from tmap.tda.cover import Cover
 from tmap.tda.metric import Metric
-from tmap.tda.utils import optimize_dbscan_eps, cover_ratio, optimal_r
+from tmap.tda.utils import optimize_dbscan_eps, optimal_r
 from tmap.api.general import logger
 
 
