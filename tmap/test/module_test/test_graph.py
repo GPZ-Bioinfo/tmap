@@ -5,6 +5,9 @@ from tmap.tda import mapper, Filter
 from tmap.tda.cover import Cover
 import numpy as np
 import pandas as pd
+
+import sklearn
+assert sklearn.__version__ == "0.20.1"
 ############################################################
 # prepare graph
 X, y = datasets.make_circles(n_samples=5000, noise=0.05, factor=0.3, random_state=100)
@@ -95,8 +98,8 @@ assert graph.get_shared_samples(5,4) == {'t2805', 't4101', 't604'}
 assert graph.get_shared_samples(5,3) is None
 
 
-assert graph.get_dropped_samples() == ['t4997', 't3848', 't1675', 't3470', 't3472', 't2461', 't2846',
-       't798', 't4510', 't3489', 't2211', 't4389', 't298', 't826',
+assert graph.get_dropped_samples() == ['t4997', 't3848', 't1675', 't3470', 't3472', 't2461', 't4510',
+       't2846', 't798', 't3489', 't2211', 't4389', 't298', 't826',
        't2241', 't4929', 't1606', 't1225', 't1486', 't719', 't343',
        't3163', 't4316']
 

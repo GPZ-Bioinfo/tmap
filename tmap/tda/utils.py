@@ -69,11 +69,21 @@ def unify_data(data):
         print('Unkown data type')
         return
 
-def transform2node_data(graph, data):
+def transform2node_data(graph, data,mode='mean'):
+    map_fun = {'sum': np.sum,
+               'weighted_sum': np.sum,
+               'weighted_mean': np.mean,
+               "mean": np.mean}
+    if mode not in ["sum", "mean", "weighted_sum", "weighted_mean"]:
+        raise SyntaxError('Wrong provided parameters.')
+    else:
+        aggregated_fun = map_fun[mode]
+
     nodes = graph.nodes
     data = unify_data(data)
+    dv = data.values
     if data is not None:
-        node_data = {nid: data.iloc[attr['sample'], :].mean() for nid, attr in nodes.items()}
+        node_data = {nid: aggregated_fun(dv[attr['sample'], :], 0) for nid, attr in nodes.items()}
         node_data = pd.DataFrame.from_dict(node_data, orient='index', columns=data.columns)
         return node_data
 
@@ -91,15 +101,36 @@ def transform2sample_data(graph,data):
         # todo: average the same index id row. result is larger than the number of origin sample
         return sample_data
 
-def prepare_metadata(graph,meta_data):
-    if meta_data.shape[0] != len(graph['sample_names']) and meta_data.shape[1] == len(graph['sample_names']):
+def verify_metadata(graph,meta_data,by='node'):
+    """
+    DO:
+      1. transform metadata into ``pd.DataFrame``
+      2. transpose the matrix if necessary
+      3. remove categorical columns in case raise error
+
+    :param tmap.tda.Graph.Graph graph:
+    :param meta_data:
+    :return:
+    """
+    meta_data = unify_data(meta_data)
+    if meta_data.shape[0] != graph.rawX.shape[0] and meta_data.shape[1] == graph.rawX.shape[0]:
         print('It may be a transposited matrix. it should be samples X OTU/features. So we will transposited it for you.')
         meta_data = meta_data.T
+    elif meta_data.shape[0] != graph.rawX.shape[0] and meta_data.shape[1] != graph.rawX.shape[0]:
+        raise SyntaxError("Wrong metadata provided. row should be samples(even the column isn't sample)...(Wrong number detected)")
 
     all_cat = np.array([is_categorical_dtype(meta_data.loc[:,col]) for col in meta_data])
     if any(all_cat):
+        print("Detecting categorical column, it will automatically remove it and go on the anaylsis.")
         meta_data = meta_data.loc[:, ~all_cat]
+        if meta_data.shape[1] == 0:
+            exit('no columns remaining... (So sad....>.<)')
 
+    if by == 'node':
+        meta_data = graph.transform_sn(meta_data,type='s2n')
+    else:
+        pass
+        # don't do anything.
     return meta_data
 
 def node2samples(node2s, safe_dict):

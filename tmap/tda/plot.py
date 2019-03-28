@@ -14,7 +14,7 @@ from scipy import stats
 from sklearn import decomposition
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler, maxabs_scale
 
-from tmap.netx.SAFE import get_enriched_nodes
+from tmap.netx.SAFE import get_significant_nodes
 
 
 class Color(object):
@@ -742,7 +742,7 @@ def pair_draw(data, projected_X, fit_result, safe_scores, graph, fea1, fea2=None
 
     min_p_value = 1.0 / (n_iter + 1.0)
     threshold = np.log10(p_value) / np.log10(min_p_value)
-    enriched_nodes = get_enriched_nodes(safe_scores, threshold, graph)
+    enriched_nodes = get_significant_nodes(graph, safe_scores, threshold, graph) #todo
 
     fig_container = []
     for idx, fea in enumerate(feas):

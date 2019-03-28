@@ -1,9 +1,12 @@
+import itertools
+
 import networkx as nx
 import numpy as np
 import pandas as pd
 from scipy.spatial.distance import squareform, pdist
+
 from tmap.tda import utils
-import itertools
+
 
 class Graph(nx.Graph):
     """
@@ -18,17 +21,18 @@ class Graph(nx.Graph):
         self.cal_params = {}
         self.all_spath = None
         self.weight = None
+        self._SAFE = []
 
     def info(self):
         description = \
-        """
-        Graph {name}
-        Contains {num_n} nodes and {num_s} samples
-        During constructing graph, {loss_p:2f} percent of samples is lost
-        
-        Used params: 
-        {str_p}
-        """.format(name=self.name,
+            """
+            Graph {name}
+            Contains {num_n} nodes and {num_s} samples
+            During constructing graph, {loss_p:2f} percent of samples is lost
+            
+            Used params: 
+            {str_p}
+            """.format(name=self.name,
                    num_n=len(self.nodes),
                    num_s=len(self.remaining_samples),
                    loss_p=self.cover_ratio(),
@@ -43,7 +47,7 @@ class Graph(nx.Graph):
         if not self.cal_params:
             exit('Graph is empty, please use mapper to create graph instead of directly initiate it.')
 
-    def is_sample_name(self,sname):
+    def is_sample_name(self, sname):
         if type(sname) == str or type(sname) == int:
             if sname not in self.rawX.index:
                 return False
@@ -53,29 +57,32 @@ class Graph(nx.Graph):
                     return False
         return True
 
-    def is_samples_shared(self,sample):
+    def is_samples_shared(self, sample):
         """
         :param sample: name or index of a sample
         :return:
         """
         existnodes = self.sample2nodes(sample)
-        possible_edges = itertools.combinations(existnodes,2)
+        if existnodes is None:
+            return False
+        possible_edges = itertools.combinations(existnodes, 2)
         for e in possible_edges:
             if e in self.edges:
                 return True
         return False
 
-    def is_samples_dropped(self,sample):
+    def is_samples_dropped(self, sample):
         """
         :param sample: name or index of a sample
         :return:
         """
         if sample in self.get_dropped_samples() or \
-            sample in [self.sname2sid(dsample) for dsample
-                                               in self.get_dropped_samples()]:
+                sample in [self.sname2sid(dsample) for dsample
+                           in self.get_dropped_samples()]:
             return True
         else:
             return False
+
     ## query
     def get_sample_size(self, nodeID):
         n = self.nodes.get(nodeID, {})
@@ -105,14 +112,14 @@ class Graph(nx.Graph):
         neighbor_sample_names = self.sid2sname(neighbor_samples)
         return neighbor_sample_names
 
-    def get_shared_samples(self,node_u,node_v):
+    def get_shared_samples(self, node_u, node_v):
         """
         :param node_u: name  of node
         :param node_v: name  of node
         :return:
         """
-        if self.get_edge_data(node_u,node_v) is not None:
-            s1,s2 = self.node2sample(node_u),self.node2sample(node_v)
+        if self.get_edge_data(node_u, node_v) is not None:
+            s1, s2 = self.node2sample(node_u), self.node2sample(node_v)
             shared_sample_names = set(s1).intersection(set(s2))
             return shared_sample_names
 
@@ -132,7 +139,7 @@ class Graph(nx.Graph):
         :param nr_threshold: Float in range of [0,100]. The threshold is used to cut path distance with percentiles. nr means neighbour
         :return: return a dict with keys of nodes, values is a list of another node ids.
         """
-        all_length = [dist for k1,v1 in self.all_length.items() for dist in v1.values()]
+        all_length = [dist for k1, v1 in self.all_length.items() for dist in v1.values()]
         length_threshold = np.percentile(all_length, nr_threshold)
         if nodeid is not None:
             if type(nodeid) == int:
@@ -169,15 +176,16 @@ class Graph(nx.Graph):
             sizes = [self.nodes[nid]['size'] for nid in node_data.index]
             node_data = node_data.multiply(sizes, axis='index')
 
+        nv = node_data.values
         # weighted neighborhood scores by node size
-        neighborhood_scores = {k: aggregated_fun(node_data.iloc[neighbors,:].values, 0)
+        neighborhood_scores = {k: aggregated_fun(nv[neighbors, :], 0)
                                for k, neighbors in neighborhoods.items()}
         neighborhood_scores = pd.DataFrame.from_dict(neighborhood_scores, orient="index", columns=node_data.columns)
-            # neighborhood_scores = neighborhood_scores.reindex(node_data.index)
+        # neighborhood_scores = neighborhood_scores.reindex(node_data.index)
         return neighborhood_scores
 
     ## convertor
-    def sid2sname(self,sid):
+    def sid2sname(self, sid):
         """
         :param sid:
         :return:
@@ -273,6 +281,7 @@ class Graph(nx.Graph):
             return sample_data
         else:
             return
+
     ## update function
     def update_dist(self, weight=None):
         if self.all_spath:
@@ -327,7 +336,19 @@ class Graph(nx.Graph):
         """
         self.cal_params.update(params)
 
-    def _add_other_node_attr(self, node_dict, suffix=''):
+    def _add_safe(self, params):
+        self._SAFE.append(params)
+
+    def clear_safe(self, force=False):
+        if not force:
+            t = input("Make sure you want to clear all SAFE scores store in graph. Y/y")
+            if t.lower() == 'y':
+                self._SAFE = []
+        else:
+            self._SAFE = []
+        print('SAFE scores has been cleared.')
+
+    def _add_other_node_attr(self, node_dict=None, suffix=''):
         # for add SAFE into graph
         pass
 
@@ -342,7 +363,7 @@ class Graph(nx.Graph):
     def quick_view(self):
         return
 
-    def show_samples(self,samples):
+    def show_samples(self, samples):
         return
 
     # attr
@@ -360,16 +381,16 @@ class Graph(nx.Graph):
     @property
     def params(self):
         template_text = \
-        """
-        cluster params
-        {cluster_p}
-        =================
-        cover params
-        {cover_p}
-        =================
-        lens params
-        {lens_p}
-        """
+            """
+            cluster params
+            {cluster_p}
+            =================
+            cover params
+            {cover_p}
+            =================
+            lens params
+            {lens_p}
+            """
         p = self.cal_params
         cluster_p = p['clusterer'].get_params()
         cover_p = {'r': p['cover'].resolution,
@@ -379,14 +400,14 @@ class Graph(nx.Graph):
                   for idx, len in enumerate(p['lens'])}
         params = template_text.format(
             cluster_p='\n'.join(['%s: %s' % (k,
-                                               v)
+                                             v)
                                  for k, v in cluster_p.items()]),
             cover_p='\n'.join(['%s: %s' % (k,
-                                             v)
+                                           v)
                                for k, v in cover_p.items()]),
             lens_p='\n'.join(['%s:\n%s' % (k,
-                                             '\n'.join(['%s: %s' % (_k,_v)
-                                                       for _k,_v in v.items()])) for k, v in lens_p.items()])
+                                           '\n'.join(['%s: %s' % (_k, _v)
+                                                      for _k, _v in v.items()])) for k, v in lens_p.items()])
         )
         params = '\n'.join([_.strip(' ') for _ in params.split('\n')])
         return params
