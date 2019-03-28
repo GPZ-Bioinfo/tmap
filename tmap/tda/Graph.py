@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from scipy.spatial.distance import squareform, pdist
 from tmap.tda import utils
-
+import itertools
 
 class Graph(nx.Graph):
     """
@@ -12,6 +12,7 @@ class Graph(nx.Graph):
 
     def __init__(self, X, name=''):
         super(Graph, self).__init__(name=name)
+        X = utils.unify_data(X)
         self.rawX = X  # sample x features
         self.nodePos = None
         self.cal_params = {}
@@ -36,11 +37,46 @@ class Graph(nx.Graph):
         description = '\n'.join([_.strip(' ') for _ in description.split('\n')])
         return description
 
-    # accessory
+    # accessory function
+    ## check or is or confirm
     def check_empty(self):
         if not self.cal_params:
             exit('Graph is empty, please use mapper to create graph instead of directly initiate it.')
 
+    def is_sample_name(self,sname):
+        if type(sname) == str or type(sname) == int:
+            if sname not in self.rawX.index:
+                return False
+        else:
+            for sn in sname:
+                if sn not in self.rawX.index:
+                    return False
+        return True
+
+    def is_samples_shared(self,sample):
+        """
+        :param sample: name or index of a sample
+        :return:
+        """
+        existnodes = self.sample2nodes(sample)
+        possible_edges = itertools.combinations(existnodes,2)
+        for e in possible_edges:
+            if e in self.edges:
+                return True
+        return False
+
+    def is_samples_dropped(self,sample):
+        """
+        :param sample: name or index of a sample
+        :return:
+        """
+        if sample in self.get_dropped_samples() or \
+            sample in [self.sname2sid(dsample) for dsample
+                                               in self.get_dropped_samples()]:
+            return True
+        else:
+            return False
+    ## query
     def get_sample_size(self, nodeID):
         n = self.nodes.get(nodeID, {})
         if not n:
@@ -51,61 +87,45 @@ class Graph(nx.Graph):
         self.check_empty()
         return len(self.remaining_samples) / self.rawX.shape[0]
 
-    def node2sample(self, nodeid):
+    def samples_neighbors(self, sample_name, nr_threshold=0.5):
         """
-        :param list/str nodeid:
+
+        provide single, if dropped samples, will print error message.
+        provide multiple samples, if one of them iss dropped, it won't print error message. Please be careful by yourself.
+        :param sample_name: name or index of samples, could be multiple or single
+        :param nr_threshold:
         :return:
         """
-        self.check_empty()
-        nodes = self.nodes
-        samples = []
-        if type(nodeid) != int:
-            for nid in nodeid:
-                samples += list(nodes[nid]['sample'])
-        else:
-            samples += list(nodes[nodeid]['sample'])
-        return list(set(samples))
+        getnodes = self.sample2nodes(sample_name)
+        if getnodes is None:
+            # must stop, else neighborhoods will return all neighborhoods
+            return []
+        getneighborhoods = self.get_neighborhoods(getnodes, nr_threshold=nr_threshold)
+        neighbor_samples = self.sample2nodes(getneighborhoods)
+        neighbor_sample_names = self.sid2sname(neighbor_samples)
+        return neighbor_sample_names
 
-    def sample2nodes(self, sampleid):
-        self.check_empty()
-        nodes = self.nodes
-        getnodes = []
-        if type(sampleid) != int:
-            for sid in sampleid:
-                getnodes += [nid for nid, attr in nodes.items() if sid in attr['sample']]
-        else:
-            sid = sampleid
-            getnodes += [nid for nid, attr in nodes.items() if sid in attr['sample']]
-        return list(set(getnodes))
-
-    def transform_sn(self, data, type='s2n'):
+    def get_shared_samples(self,node_u,node_v):
         """
-        :param data:
-        :param type: s2n mean 'sample to node', n2s mean 'node to sample'
+        :param node_u: name  of node
+        :param node_v: name  of node
         :return:
         """
-        if type == 's2n':
-            node_data = utils.transform2node_data(self, data)
-            return node_data
-        elif type == 'n2s':
-            print("From node to sample is a replication process")
-            sample_data = utils.transform2sample_data(self, data)
-            return sample_data
+        if self.get_edge_data(node_u,node_v) is not None:
+            s1,s2 = self.node2sample(node_u),self.node2sample(node_v)
+            shared_sample_names = set(s1).intersection(set(s2))
+            return shared_sample_names
+
+    def get_dropped_samples(self):
+        if self.remaining_samples:
+            dropped_sample_ids = set(np.arange(self.rawX.shape[0])).difference(set(self.remaining_samples))
+            dropped_sample_names = [self.sid2sname(int(sid)) for sid in dropped_sample_ids]
+            return dropped_sample_names
+
         else:
-            return
+            print('No samples remained because of invalid graph construction or no samples clustering.')
 
-    def update_dist(self, weight=None):
-        if self.all_spath:
-            print("Overwriting existing shortest path and corresponding distant. With assigned weight %s" % (weight if weight else 'default'))
-        self.all_spath = {}
-        self.all_length = {}
-        self.weight = weight
-        for n in self:
-            # iter node
-            self.all_spath[n] = nx.shortest_path(self, n, weight=weight)
-            self.all_length[n] = nx.shortest_path_length(self, n, weight=weight)
-            # get all pairwise node distance, including self-distance of 0
-
+    ## indirect attr (For SAFE calculation)
     def get_neighborhoods(self, nodeid=None, nr_threshold=0.5):
         """
         generate neighborhoods from the graph for all nodes
@@ -117,7 +137,6 @@ class Graph(nx.Graph):
         if nodeid is not None:
             if type(nodeid) == int:
                 nodeid = [nodeid]
-
         else:
             nodeid = self.nodes
         neighborhoods = {nid: [reach_nid
@@ -157,8 +176,117 @@ class Graph(nx.Graph):
             # neighborhood_scores = neighborhood_scores.reindex(node_data.index)
         return neighborhood_scores
 
+    ## convertor
+    def sid2sname(self,sid):
+        """
+        :param sid:
+        :return:
+        :rtype list
+        """
+        # convert sample id into sample name.
+        self.check_empty()
+        if type(sid) == int:
+            sids = [sid]
+        else:
+            sids = sid
 
-    # addable sample
+        if not sids:
+            # if provide empty sids.
+            return ''
+
+        r = self.rawX.index[np.array(sids)]
+        if len(r) > 1:
+            return list(r)
+        elif len(r) == 1:
+            return r[0]
+        else:
+            return r
+
+    def sname2sid(self, sname):
+        # sname must be single
+        self.check_empty()
+        if sname not in self.rawX.index:
+            print('Error because of searched sample name not in raw data X')
+        else:
+            return self.rawX.index.get_loc(sname)
+
+    def node2sample(self, nodeid):
+        """
+        :param list/str nodeid:
+        :return:
+        """
+        self.check_empty()
+        nodes = self.nodes
+        samples = []
+        if type(nodeid) != int:
+            for nid in nodeid:
+                samples += list(nodes[nid]['sample'])
+        else:
+            samples += list(nodes[nodeid]['sample'])
+
+        return self.sid2sname(list(set(samples)))
+
+    def sample2nodes(self, sampleid):
+        """
+
+        :param sampleid: multiple/single index/name of samples.
+        :return:
+        """
+        self.check_empty()
+
+        nodes = self.nodes
+        getnodes = []
+
+        if type(sampleid) == int or type(sampleid) == str:
+            sampleid = [sampleid]
+        elif type(sampleid) == dict:
+            # dict like {nid: [sampleid1,sampleid2...]...}
+            sampleid = set([v for k, d in sampleid.items() for v in d])
+        else:
+            pass
+        # process multi id provided situation.
+
+        for sid in sampleid:
+            if self.is_sample_name(sid):
+                # if sample name provide , return sample index.
+                sid = self.sname2sid(sid)
+            getnodes += [nid for nid, attr in nodes.items() if sid in attr['sample']]
+
+        if len(set(getnodes)) >= 1:
+            return list(set(getnodes))
+        else:
+            print("Maybe dropped sample provided.....")
+            return
+
+    def transform_sn(self, data, type='s2n'):
+        """
+        :param data:
+        :param type: s2n mean 'sample to node', n2s mean 'node to sample'
+        :return:
+        """
+        if type == 's2n':
+            node_data = utils.transform2node_data(self, data)
+            return node_data
+        elif type == 'n2s':
+            print("From node to sample is a replication process")
+            sample_data = utils.transform2sample_data(self, data)
+            return sample_data
+        else:
+            return
+    ## update function
+    def update_dist(self, weight=None):
+        if self.all_spath:
+            print("Overwriting existing shortest path and corresponding distant. With assigned weight %s" % (weight if weight else 'default'))
+        self.all_spath = {}
+        self.all_length = {}
+        self.weight = weight
+        for n in self:
+            # iter node
+            self.all_spath[n] = nx.shortest_path(self, n, weight=weight)
+            self.all_length[n] = nx.shortest_path_length(self, n, weight=weight)
+            # get all pairwise node distance, including self-distance of 0
+
+    # for addable and reuseable (todo)
     def add_raw_samples(self):
         pass
 
@@ -171,9 +299,10 @@ class Graph(nx.Graph):
     # necessary
     def _add_node(self, nodes):
         samples = []
-        for nid,attr in nodes:
+        for nid, attr in nodes:
             samples += list(attr['sample'])
         self.remaining_samples = list(set(samples))
+        # it must be index of sample instead of sample name
         self.add_nodes_from(nodes)
 
     def _add_edge(self, edges):
@@ -198,17 +327,25 @@ class Graph(nx.Graph):
         """
         self.cal_params.update(params)
 
+    def _add_other_node_attr(self, node_dict, suffix=''):
+        # for add SAFE into graph
+        pass
+
+    # IO part
     def read(self, filename):
         pass
 
     def write(self, filename):
         pass
 
+    # visualization
     def quick_view(self):
-        pass
+        return
+
+    def show_samples(self,samples):
+        return
 
     # attr
-
     @property
     def adjmatrix(self):
         return nx.adj_matrix(self)

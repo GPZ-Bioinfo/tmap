@@ -104,7 +104,7 @@ def convertor(compared_count, node_data, n_iter, cal_mode="df"):
     return safe_scores
 
 
-def _SAFE(graph, node_data, n_iter=1000, nr_threshold=0.5, all_dist=None, neighborhoods=None, _cal_type="dict", _mode='enrich', agg_mode='sum', verbose=1):
+def _SAFE(graph, node_data, n_iter=1000, nr_threshold=0.5, neighborhoods=None, _cal_type="dict", _mode='enrich', agg_mode='sum', verbose=1):
     """
     perform SAFE analysis by node permutations
     :param graph:

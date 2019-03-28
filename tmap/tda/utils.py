@@ -61,10 +61,7 @@ def unify_data(data):
     if 'iloc' in dir(data):
         # pd.DataFrame
         return data
-    elif type(data) == list:
-        # list
-        return pd.DataFrame(data)
-    elif isinstance(data,np.ndarray):
+    elif type(data) == list or isinstance(data,np.ndarray):
         return pd.DataFrame(data)
     elif type(data) == dict:
         return pd.DataFrame.from_dict(data,orient='index')

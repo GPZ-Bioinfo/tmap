@@ -14,6 +14,12 @@ from tmap.api.general import *
 from tmap.tda.plot import vis_progressX, Color
 
 
+def output_graph(fig,output,mode):
+    if mode == 'html' or output.endswith('html'):
+        plotly.offline.plot(fig, filename=output, auto_open=False)
+    else:
+        pio.write_image(fig, output, format=mode)
+
 def draw_PCOA(rawdatas, summary_datas, output, mode='html', width=1500, height=1000, sort_col='SAFE enriched score'):
     """
     Currently ordination visualization just support pcoa.
@@ -67,10 +73,8 @@ def draw_PCOA(rawdatas, summary_datas, output, mode='html', width=1500, height=1
                            height=height,
                            font=dict(size=15),
                            hovermode='closest', ))
-    if mode != 'html' or not output.endswith('html'):
-        pio.write_image(fig, output, format=mode)
-    else:
-        plotly.offline.plot(fig, filename=output, auto_open=False)
+
+    output_graph(fig,output,mode)
     logger("Ordination graph has been output to", output, verbose=1)
 
 
@@ -165,10 +169,7 @@ def draw_stratification(graph, SAFE_dict, cols, output, mode='html', n_iter=1000
     fig.layout.font.size = 15
     fig.layout.hovermode = 'closest'
 
-    if mode != 'html' or not output.endswith('html'):
-        pio.write_image(fig, output, format=mode)
-    else:
-        plotly.offline.plot(fig, filename=output, auto_open=False)
+    output_graph(fig,output,mode)
     logger("Stratification graph has been output to", output, verbose=1)
 
 
@@ -229,10 +230,7 @@ def draw_ranking(data, cols_dict, output, mode='html', width=1600, height=1400, 
     fig.layout.width = width
     fig.layout.height = height
 
-    if mode == 'html' or output.endswith('html'):
-        plotly.offline.plot(fig, filename=output, auto_open=False)
-    else:
-        pio.write_image(fig, output, format=mode)
+    output_graph(fig,output,mode)
     logger("Ranking graph has been output to", output, verbose=1)
 
 
