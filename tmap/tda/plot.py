@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import colorsys
+from collections import defaultdict
 
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
@@ -9,12 +10,13 @@ import numpy as np
 import pandas as pd
 import plotly
 import plotly.graph_objs as go
+from pandas.api import types
 from plotly import tools
 from scipy import stats
-from sklearn import decomposition
-from sklearn.preprocessing import LabelEncoder, MinMaxScaler, maxabs_scale
+from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 
 from tmap.netx.SAFE import get_significant_nodes
+from tmap.tda.utils import c_node_text, write_figure
 
 
 class Color(object):
@@ -34,7 +36,10 @@ class Color(object):
 
     """
 
-    def __init__(self, target, dtype="numerical", target_by="sample"):
+    def __init__(self,
+                 target,
+                 dtype="numerical",
+                 target_by="sample"):
         """
         :param list/np.ndarray/pd.Series target: target values for samples or nodes
         :param str dtype: type of target values, "numerical" or "categorical"
@@ -43,40 +48,59 @@ class Color(object):
         """
         if target is None:
             raise Exception("target must not be None.")
-
+        if dtype not in ["numerical", "categorical"]:
+            raise ValueError("data type must be 'numerical' or 'categorical'.")
+        if target_by not in ["sample", "node"]:
+            raise ValueError("target values must be by 'sample' or 'node'")
         # for node target values, accept a node associated dictionary of values
         if target_by == 'node':
             _target = np.zeros(len(target))
-            for _node_idx, _node_val in target.items():
-                _target[_node_idx] = _node_val
+            if type(target) == list:
+                _target = np.array(target[::])
+            elif type(target) == dict:
+                for _node_idx, _node_val in target.items():
+                    _target[_node_idx] = _node_val
+            else:
+                _target = np.array(target[::])
             target = _target
 
         if type(target) is not np.ndarray:
             target = np.array(target)
         if len(target.shape) == 1:
             target = target.reshape(-1, 1)
-        if dtype not in ["numerical", "categorical"]:
-            raise ValueError("data type must be 'numerical' or 'categorical'.")
-        if target_by not in ["sample", "node"]:
-            raise ValueError("target values must be by 'sample' or 'node'")
-        # target values should be numbers, check and encode categorical labels
 
-        if ((type(target[0][0]) != int)
-                and (type(target[0][0]) != float)
-                and (not isinstance(target[0][0], np.number))
-        ):
-            self.label_encoder = LabelEncoder()
-            self.target = self.label_encoder.fit_transform(target.ravel()).reshape(-1,1)
-        elif dtype == "categorical":
-            self.label_encoder = LabelEncoder()
-            self.target = self.label_encoder.fit_transform(target.astype(str).ravel()).reshape(-1,1)
-        else:
+        # target values should be numbers, auto-check and encode categorical labels
+        # but the labels must like the original target, so it assigned before process the target
+        self.labels = target[:, 0]
+        if types.is_numeric_dtype(target):
+            # if target is numeric no matter assigned dtype
             self.label_encoder = None
             self.target = target
+        else:
+            # if target is cat.
+            self.label_encoder = LabelEncoder()
+            self.target = self.label_encoder.fit_transform(target.astype(str).ravel()).reshape(-1, 1)
 
         self.dtype = dtype
-        self.labels = target.astype(str)
+
         self.target_by = target_by
+
+    def _process_cat_color(self, cmap=None):
+        if self.dtype == 'categorical':
+            if cmap is None:
+                generated_color_v = np.arange(0.0,
+                                              1 + 1e-6,
+                                              1.0 / (len(set(self.labels)) - 1))  # add 1 into idx, so it is 1 + 1e-6 which is little bigger than 1.
+                generated_colors = [self._get_hex_color(_) for _ in generated_color_v]
+                cat2color = dict(zip(sorted(set(self.labels)),  # order doesn't matter
+                                     generated_colors))
+                # generate a series of color corresponding to each categorical
+            else:
+                for label in self.labels:
+                    if label not in cmap:
+                        raise Exception('assigned cmap is not contain all cmap. such as %s' % label)
+                cat2color = cmap
+            return cat2color
 
     def _get_hex_color(self, i, cmap=None):
         """
@@ -117,7 +141,8 @@ class Color(object):
             target_q3_max = scaler_q3_max.fit_transform(target[index_q3_max]) if any(index_q3_max) else np.zeros(target[index_q3_max].shape)
             # in case the situation which will raise ValueError when sliced_index is all False.
         except Exception as e:
-            import pdb;pdb.set_trace()
+            import pdb;
+            pdb.set_trace()
 
         # using percentile to cut and assign colors will meet some special case which own weak distribution.
         # below `if` statement is trying to determine and solve these situations.
@@ -142,72 +167,86 @@ class Color(object):
     def get_colors(self, nodes, cmap=None):
         """
         :param dict nodes: nodes from graph
-        :param cmap: not implemented yet...
+        :param cmap: not implemented yet...For now, it only accept manual assigned dict like {sample1:color1,sample2:color2.....}
         :return: nodes colors with keys, and the color map of the target values
         :rtype: tuple (first is a dict node_ID:node_color, second is a tuple (node_ID_index,node_color))
         """
         # todo: accept a customzied color map [via the 'cmap' parameter]
-        node_keys = nodes.keys()
-
+        node_keys = nodes
+        cat2color = {}
+        if self.dtype == 'categorical' and cmap is not None:
+            cat2color = cmap
+        elif self.dtype == 'categorical':
+            cat2color = self._process_cat_color(cmap=cmap)
         # map a color for each node
-        node_color_target = np.zeros((len(nodes), 1))
+        node_colors = []
+        node_color_target = []
         for i, node_id in enumerate(node_keys):
             if self.target_by == 'node':
-                target_in_node = self.target[node_id]
+                target_in_node = self.target[[node_id]]
             else:
-                target_in_node = self.target[nodes[node_id]]
+                try:
+                    target_in_node = self.target[nodes[node_id]['sample']]
+                except IndexError:
+                    raise SyntaxError("Maybe you provide a data with row number equal to nodes,"
+                                      "and doesn't change default params 'target_by' of Color into 'node'")
 
             # summarize target values from samples/nodes for each node
-            if self.dtype == "categorical":
-                # Return an array of the modal (most common) value in the passed array. (if more than one, the smallest is return)
-                node_color_target[i] = stats.mode(target_in_node)[0][0]
-            elif self.dtype == "numerical":
-                node_color_target[i] = np.nanmean(target_in_node)
-        if np.any(np.isnan(node_color_target)):
-            print("Nan was found in the given target, Please check the input data.")
-        _node_color_idx = self._rescale_target(node_color_target)
-        node_colors = [self._get_hex_color(idx) for idx in _node_color_idx]
+            if self.dtype == "numerical":
+                node_color_target.append(np.nanmean(target_in_node))
 
-        return dict(zip(node_keys, node_colors)), (node_color_target, node_colors)
+            else:  # self.dtype == "categorical":
+                # Return an array of the modal (most common) value in the passed array. (if more than one, the smallest is return)
+                # target_in_node could be str or int...
+                most_num = stats.mode(target_in_node)[0][0][0]
+                if self.label_encoder is not None:
+                    most_str = self.label_encoder.inverse_transform(most_num)
+                else:
+                    most_str = most_num
+                node_colors.append(cat2color.get(most_str, 'blue'))
+                node_color_target.append(most_str)
+
+        node_color_target = np.array(node_color_target).reshape(-1, 1)
+        if self.dtype == 'numerical':
+            _node_color_idx = self._rescale_target(node_color_target)
+            node_colors = [self._get_hex_color(idx) for idx in _node_color_idx]
+        # if np.any(np.isnan(node_color_target)):
+        #     print("Nan was found in the given target, Please check the input data.")
+        return dict(zip(node_keys,
+                        node_colors)), \
+               (node_color_target,
+                node_colors)
 
     def get_sample_colors(self, cmap=None):
         """
         :param dict nodes: nodes from graph
-        :param cmap: not implemented yet...
+        :param cmap: not implemented yet...For now, it only accept manual assigned dict like {sample1:color1,sample2:color2.....}
         :return: nodes colors with keys, and the color map of the target values
         :rtype: tuple (first is a dict node_ID:node_color, second is a tuple (node_ID_index,node_color))
         """
-        cat2colors = {}
+        cat2color = {}
 
         if self.target_by == "node":
             sample_colors = ['red' for _ in self.target]
-
+            # because passed target is node-shapes data. could not proper broadcast
         else:
             if self.dtype == "numerical":
                 _sample_color_idx = self._rescale_target(self.target)
                 sample_colors = [self._get_hex_color(idx) for idx in _sample_color_idx]
-            else:
-                labels = self.label_encoder.inverse_transform(self.target)
-                _sample_color_idx = np.arange(0.0, 1.1, 1.0 / (len(set(labels)) - 1))  # add 1 into idx, so it is 1.1 which is little bigger than 1.
-                target2idx = dict(zip(sorted(set(labels)), _sample_color_idx))
-                sample_colors = [self._get_hex_color(target2idx[label]) for label in labels]
-                cat2colors = dict(zip(labels, sample_colors))
+            else:  # self.dtype == "categorical"
+                cat2color = self._process_cat_color(cmap=cmap)
+                sample_colors = [cat2color[each] for each in self.labels]
 
-            if type(cmap) == dict and self.dtype == 'categorical':
-                sample_colors = [cmap.get(_, 'blue') for _ in labels]
-                # todo: implement for custom cmap for categorical values.
-
-        return sample_colors, cat2colors
+                # todo: implement more custom cmap
+        return sample_colors, cat2color
 
 
-def show(data, graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2, mode=None, strength=None):
+def show(graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2, mode='spring', strength=None):
     """
     Network visualization of TDA mapper
 
     Using matplotlib as basic engine, it is easily add title or others elements.
-
-    :param np.ndarray/pd.DataFrame data:
-    :param dict graph:
+    :param tmap.tda.Graph.Graph graph:
     :param Color/str color: Passing ``tmap.tda.plot.Color`` or just simply color string.
     :param tuple fig_size: height and width
     :param int node_size: With given node_size, it will scale all nodes with same size ``node_size/max(node_sizes) * node_size **2``. The size of nodes also depends on the biggest node which contains maxium number of samples.
@@ -217,28 +256,30 @@ def show(data, graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2,
     :return: plt.figure
     """
     # todo: add file path for graph saving
-    node_keys = graph["node_keys"]
-    node_positions = graph["node_positions"]
-    node_sizes = graph["node_sizes"]
+    node_keys = graph.nodes
+    node_positions = graph.nodePos
+    node_sizes = list(graph.size.values())
 
     # scale node sizes
     max_node_size = np.max(node_sizes)
     sizes = (node_sizes / max_node_size) * (node_size ** 2)
 
-    # map node colors
+    # map node colors or init node color if not provided
     if color is None or type(color) == str:
-        if color is None:
-            color = 'red'
+        color = 'red' if color is None else color
         color_map = {node_id: color for node_id in node_keys}
-        target2colors = (np.zeros((len(node_keys), 1)), [color] * len(node_keys))
+        target2colors = (np.zeros((len(node_keys), 1)),
+                         [color] * len(node_keys))
     else:
-        color_map, target2colors = color.get_colors(graph["nodes"])
-    colorlist = [color_map[it] for it in node_keys]
+        color_map, target2colors = color.get_colors(node_keys)
 
+    colorlist = [color_map[it] for it in node_keys]
     node_target_values, node_colors = target2colors
-    legend_lookup = dict(zip(node_target_values.reshape(-1, ), node_colors))
+    legend_lookup = dict(zip(node_target_values.ravel(),  # flattern the node_target_values
+                             node_colors))
 
     # if there are indicated color with ``Color``, it need to add some legend for given color.
+    # Legend part
     if isinstance(color, Color):
         if color.dtype == "categorical":
             fig = plt.figure(figsize=fig_size)
@@ -295,38 +336,27 @@ def show(data, graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2,
     else:
         fig = plt.figure(figsize=fig_size)
         ax = fig.add_subplot(1, 1, 1)
-    if mode == 'spring':
-        pos = {}
-        # the projection space is one dimensional
-        if node_positions.shape[1] == 1:
-            m = decomposition.PCA(n_components=2)
-            s = MinMaxScaler()
-            d = m.fit_transform(data)
-            d = s.fit_transform(d)
-            for k in node_keys:
-                data_in_node = d[graph['nodes'][k]]
-                pos.update({int(k): np.average(data_in_node, axis=0)})
-        elif node_positions.shape[1] >= 2:
-            for i, k in enumerate(node_keys):
-                pos.update({int(k): node_positions[i, :2]})
 
-        G = nx.Graph(pos=pos)
-        G.add_nodes_from(node_keys)
-        G.add_edges_from(graph["edges"])
-        pos = nx.spring_layout(G, pos=pos, k=strength)
+    if mode == 'spring':
+        ori_pos = graph.data
+        if ori_pos.shape[1] < 2:
+            pos = nx.spring_layout(graph, k=strength)
+        else:
+            ori_pos = {n: ori_pos[n, :2] for n in graph.nodes}
+            pos = nx.spring_layout(graph, pos=ori_pos, k=strength)
         # add legend
-        nx.draw_networkx(G, pos=pos,
+        nx.draw_networkx(graph,
+                         ax=ax,
+                         pos=pos,
                          node_size=sizes,
                          node_color=colorlist,
                          width=edge_width,
-                         edge_color=[color_map[edge[0]] for edge in graph["edges"]],
-                         with_labels=False, ax=ax)
+                         edge_color=[color_map[edge[0]] for edge in graph.edges],
+                         with_labels=False)
 
     else:
-        fig = plt.figure(figsize=fig_size)
-        ax = fig.add_subplot(111)
         node_idx = dict(zip(node_keys, range(len(node_keys))))
-        for edge in graph["edges"]:
+        for edge in graph.edges:
             ax.plot([node_positions[node_idx[edge[0]], 0], node_positions[node_idx[edge[1]], 0]],
                     [node_positions[node_idx[edge[0]], 1], node_positions[node_idx[edge[1]], 1]],
                     c=color_map[edge[0]], zorder=1)
@@ -337,37 +367,12 @@ def show(data, graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2,
     plt.show()
 
 
-def get_arrows(graph, safe_score, max_length=1, pvalue=0.05):
-    min_p_value = 1.0 / (5000 + 1.0)
-    threshold = np.log10(pvalue) / np.log10(min_p_value)
-
-    node_pos = graph.nodePos
-
-    safe_score_df = pd.DataFrame.from_dict(safe_score, orient='columns')
-    safe_score_df = safe_score_df.where(safe_score_df >= threshold, other=0)
-    norm_df = safe_score_df.apply(lambda x: maxabs_scale(x), axis=1, result_type='broadcast')
-
-    x_cor = norm_df.apply(lambda x: x * node_pos.values[:, 0], axis=0)
-    y_cor = norm_df.apply(lambda x: x * node_pos.values[:, 1], axis=0)
-
-    x_cor = x_cor.mean(0)
-    y_cor = y_cor.mean(0)
-    arrow_df = pd.DataFrame([x_cor, y_cor], index=['x coordinate', 'y coordinate'], columns=safe_score_df.columns)
-    all_fea_scale = maxabs_scale(safe_score_df.sum(0))
-    # scale each arrow by the sum of safe score， maximun is 1 others are percentage not larger than 100%.
-    scaled_ratio = max_length * all_fea_scale / arrow_df.apply(lambda x: np.sqrt(np.sum(x ** 2)), axis=0)
-    # using max length to multipy by scale ratio and denote the original length.
-    scaled_arrow_df = arrow_df * np.repeat(scaled_ratio.values.reshape(1, -1), axis=0, repeats=2).reshape(2, -1)
-
-    return scaled_arrow_df
-
-
 def tm_plot(graph, projected_X, filename, mode='file', include_plotlyjs='cdn', color=None, _color_SAFE=None, min_size=10, max_size=40, **kwargs):
     vis_progressX(graph, projected_X, simple=True, filename=filename, include_plotlyjs=include_plotlyjs, color=color, _color_SAFE=_color_SAFE, min_size=min_size, max_size=max_size,
                   mode=mode, **kwargs)
 
 
-def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _color_SAFE=None, min_size=10, max_size=40, **kwargs):
+def vis_progressX(graph, simple=False, mode='file', color=None, _color_SAFE=None, min_size=10, max_size=40, **kwargs):
     """
     For dynamic visualizing tmap construction process, it performs a interactive graph based on `plotly` with a slider to present the process from ordination to graph step by step. Currently, it doesn't provide any API for overriding the number of step from ordination to graph. It may be implemented at the future.
 
@@ -383,8 +388,7 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
 
         * Second, The ``_color_SAFE`` param should be a ``Color`` with a nodes-length array, which is normally a SAFE score.
 
-    :param graph:
-    :param np.array projected_X:
+    :param tmap.tda.Graph.Graph graph:
     :param str mode: [file|obj|web]
     :param bool simple:
     :param color:
@@ -392,56 +396,66 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
     :param kwargs:
     :return:
     """
-    node_pos = graph["node_positions"]
-    ori_MDS = projected_X
-    nodes = graph["nodes"]
-    sizes = graph["node_sizes"][:, 0]
-    sample_names = np.array(graph.get("sample_names", [])).astype(str)
+    node_pos = graph.nodePos
+    # shape is average projected_data (node x lens)
+    sample_pos = graph.data
+    # shape is raw projected_data (sample x lens)
+    nodes = graph.nodes
+    sizes = graph.size
+
+    sample_names = np.array(graph.sample_names.astype(str))
     minmax_scaler = MinMaxScaler(feature_range=(min_size, max_size))
     mms_color = MinMaxScaler(feature_range=[0, 1])
+
+    scaled_size = minmax_scaler.fit_transform(np.array([sizes[_] for _ in range(len(nodes))]).reshape(-1, 1))
 
     # init some empty values if color wasn't given
     target_v_raw = [0 for _ in nodes]
     target_v = [0 for _ in nodes]
-    samples_colors = ['red' for _ in sample_names]
+    target_colors = ['blue' for _ in nodes]
+    sample_colors = ['red' for _ in sample_names]
+    color_map = {}
+    cat2color = defaultdict(lambda: 'blue')
+    legend_names = []
 
     if color is not None:
-        color_map, target2colors = color.get_colors(graph["nodes"])
+        color_map, target2colors = color.get_colors(graph.nodes)
         target_v = mms_color.fit_transform(target2colors[0]).ravel()
         target_v_raw = target2colors[0].ravel()
+        target_colors = target2colors[1]
 
-        samples_colors, cat2colors = color.get_sample_colors()
-
+        sample_colors, cat2color = color.get_sample_colors()
         if color.dtype == 'categorical':
-            legend_names = np.array(color.label_encoder.inverse_transform(target2colors[0].reshape(-1, ).astype(int)))
-    else:
-        color_map = {}
+            legend_names = color.labels.astype(str)
 
-    # For calculating the dynamic process. It need to be aligned first.
+    # For calculating the dynamic process. It need to duplicate the samples first.
     # reconstructing the ori_MDS into the samples_pos
     # reconstructing the node_pos into the center_pos
-    point_tmp = []
+    sample_tmp = []
     center_tmp = []
     text_tmp = []
-    samples_colors_dynamic = []
+    duplicated_sample_colors = []
     for n in nodes:
-        point_tmp.append(ori_MDS[nodes[n], :])
-        center_tmp.append(np.concatenate([node_pos[[n], :]] * len(nodes[n]), axis=0))
-        text_tmp.append(sample_names[nodes[n]])
+        sample_tmp.append(sample_pos[nodes[n]['sample'], :])
+        center_tmp.append(np.repeat(node_pos[[n], :],
+                                    sizes[n],
+                                    axis=0))
+        text_tmp.append(sample_names[nodes[n]['sample']])
         if color is not None:
-            samples_colors_dynamic += list(np.repeat(color_map.get(n, 'blue'), len(nodes[n])))
+            duplicated_sample_colors += list(np.repeat(color_map.get(n, 'blue'),
+                                                       sizes[n]))
         else:
-            samples_colors_dynamic.append("blue")
-    samples_pos = np.concatenate(point_tmp, axis=0)
-    center_pos = np.concatenate(center_tmp, axis=0)
-    broadcast_samples_text = np.concatenate(text_tmp, axis=0)
+            duplicated_sample_colors += ["blue"] * sizes[n]
+    duplicated_sample_pos = np.concatenate(sample_tmp, axis=0)
+    duplicated_node_pos = np.concatenate(center_tmp, axis=0)
+    duplicated_samples_text = np.concatenate(text_tmp, axis=0)
+    assert duplicated_sample_pos.shape[0] == duplicated_node_pos.shape[0] == duplicated_samples_text.shape[0] == len(duplicated_sample_colors)
     # For visualizing the movement of samples, it need to multiply one sample into multiple samples which is need to reconstruct pos,text.
 
-    node_pos = graph["node_positions"]
     # prepare edge data
     xs = []
     ys = []
-    for edge in graph["edges"]:
+    for edge in graph.edges:
         xs += [node_pos[edge[0], 0],
                node_pos[edge[1], 0],
                None]
@@ -449,38 +463,33 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
                node_pos[edge[1], 1],
                None]
 
-    # if there are _color_SAFE, it will present two kinds of color.
+    # if there are _color_SAFE, it will present two kinds of color. if simple != True
     # one is base on original data, one is transformed-SAFE data. Use the second one.
     if _color_SAFE is not None:
-        safe_color, safe_t2c = _color_SAFE.get_colors(graph["nodes"])
+        safe_color, safe_t2c = _color_SAFE.get_colors(graph.nodes)
         # former is a dict which key is node id and values is node color
         # second is a tuple (node values, node color)
-        node_colors = [safe_color[_] for _ in range(len(nodes))]
-        target_v = mms_color.fit_transform(safe_t2c[0]).ravel()  # minmaxscaled node values
-        target_v_raw = safe_t2c[0].ravel()  # raw node values
+        target_SAFE_color = [safe_color[_] for _ in graph.nodes]
+        target_SAFE_raw_v = safe_t2c[0].ravel()  # raw node values
     else:
-        node_colors = [color_map.get(_, 'blue') for _ in range(len(nodes))]
+        target_SAFE_color = []
+        target_SAFE_raw_v = []
 
     # prepare node & samples text
-    node_vis_vals = target_v_raw  # todo: test categorical color passed.
-    # values output from color.target. It need to apply mean function for a samples-length color.target.
-    node_text = [str(n) +
-                 # node id
-                 "<Br>vals:%s<Br>" % '{:.6f}'.format(v) +
-                 # node values output from color.target.
-                 '<Br>'.join(list(sample_names[nodes[n]][:8]) + ['......']
-                             if len(sample_names[nodes[n]]) >= 8  # too long will make the node doesn't hover anythings.
-                             else sample_names[nodes[n]]) for n, v in
-                 # samples name concated with line break.
-                 zip(nodes,
-                     node_vis_vals)]
+    node_text = c_node_text(nodes,
+                            sample_names,
+                            target_v_raw)
     ### samples text
     samples_text = ['sample ID:%s' % _ for _ in sample_names]
 
-    nv2c = dict(zip(target_v, node_colors))  # A dict which includes values of node to color
+    # A dict which includes values of node to color
+    # For make continuous color legend
+    nv2c = dict(zip(target_v,
+                    target_colors))
     colorscale = []
     for _ in sorted(set(target_v)):
-        colorscale.append([_, nv2c[_]])
+        colorscale.append([_,
+                           nv2c[_]])
     colorscale[-1][0] = 1  # the last value must be 1
     colorscale[0][0] = 0  # the first value must be 0
 
@@ -495,6 +504,7 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
         hoverinfo='skip',
         showlegend=False,
         mode="lines")
+
     node_marker = go.Scatter(
         # node position
         visible=False,
@@ -502,18 +512,18 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
         y=node_pos[:, 1],
         hovertext=node_text,
         hoverinfo="text",
-        marker=dict(color=node_colors,
-                    size=minmax_scaler.fit_transform(np.array([sizes[_] for _ in range(len(nodes))]).reshape(-1, 1)),
+        marker=dict(color=target_colors,
+                    size=scaled_size,
                     opacity=1),
         showlegend=False,
         mode="markers")
-    sample_markers = go.Scatter(
-        visible=True,
-        x=ori_MDS[:, 0],
-        y=ori_MDS[:, 1],
-        marker=dict(color=samples_colors),
-        hovertext=samples_text,
 
+    sample_marker = go.Scatter(
+        visible=True,
+        x=sample_pos[:, 0],
+        y=sample_pos[:, 1],
+        marker=dict(color=sample_colors),
+        hovertext=samples_text,
         hoverinfo="text",
         showlegend=False,
         mode="markers")
@@ -527,13 +537,15 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
 
         if color is not None:
             if color.dtype == 'numerical':
-                node_marker['marker']['color'] = target_v_raw
+                # with continuous legend bar
+                node_marker['marker']['color'] = target_v
                 node_marker['marker']['colorscale'] = colorscale
                 node_marker['marker']['showscale'] = True
                 fig.append_trace(node_marker, 1, 1)
-            else:
-                minmax_scaler.fit(np.array([sizes[_] for _ in range(len(nodes))]).reshape(-1, 1))
+            else:  # if color.dtype == 'categorical'
                 for cat in np.unique(legend_names):
+                    # it won't missing variables legend_names. check 434 line
+                    # it will auto sort with alphabetic order
                     node_marker = go.Scatter(
                         # node position
                         visible=True,
@@ -541,8 +553,8 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
                         y=node_pos[legend_names == cat, 1],
                         text=np.array(node_text)[legend_names == cat],
                         hoverinfo="text",
-                        marker=dict(color=cat2colors[cat],
-                                    size=minmax_scaler.transform(np.array([sizes[_] for _ in np.arange(len(nodes))[legend_names == cat]]).reshape(-1, 1)),
+                        marker=dict(color=cat2color[cat],
+                                    size=scaled_size[legend_names == cat, 0],
                                     opacity=1),
                         name=cat,
                         showlegend=True,
@@ -550,12 +562,15 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
                     fig.append_trace(node_marker, 1, 1)
         else:
             fig.append_trace(node_marker, 1, 1)
+        fig.layout.hovermode = "closest"
     else:
-        fig = plotly.tools.make_subplots(rows=2, cols=2, specs=[[{'rowspan': 2}, {}], [None, {}]],
-                                         # subplot_titles=('Mapping process', 'Original projection', 'tmap graph')
+        fig = plotly.tools.make_subplots(rows=2,
+                                         cols=2,
+                                         specs=[[{'rowspan': 2}, {}],
+                                                [None, {}]],
                                          )
         # original place or ordination place
-        fig.append_trace(sample_markers, 1, 1)
+        fig.append_trace(sample_marker, 1, 1)
 
         # dynamic process to generate 5 binning positions
         n_step = 5
@@ -564,11 +579,11 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
             # s = steps: move to node position.
             fig.append_trace(go.Scatter(
                 visible=False,
-                x=samples_pos[:, 0] + ((center_pos - samples_pos) / n_step * s)[:, 0],
-                y=samples_pos[:, 1] + ((center_pos - samples_pos) / n_step * s)[:, 1],
-                marker=dict(color=samples_colors_dynamic),
+                x=duplicated_sample_pos[:, 0] + ((duplicated_node_pos - duplicated_sample_pos) / n_step * s)[:, 0],
+                y=duplicated_sample_pos[:, 1] + ((duplicated_node_pos - duplicated_sample_pos) / n_step * s)[:, 1],
+                marker=dict(color=duplicated_sample_colors),
                 hoverinfo="text",
-                hovertext=broadcast_samples_text,
+                hovertext=duplicated_samples_text,
                 showlegend=False,
                 mode="markers"), 1, 1)
 
@@ -578,10 +593,16 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
         fig.append_trace(node_marker, 1, 1)
         node_line['visible'] = True
         node_marker['visible'] = True
-        sample_markers['visible'] = True
+        sample_marker['visible'] = True
         fig.append_trace(node_line, 2, 2)
+        if _color_SAFE is not None:
+            node_text = c_node_text(nodes,
+                                    sample_names,
+                                    target_SAFE_raw_v)
+            node_marker['hovertext'] = node_text
+            node_marker['marker']['color'] = target_SAFE_color
         fig.append_trace(node_marker, 2, 2)
-        fig.append_trace(sample_markers, 1, 2)
+        fig.append_trace(sample_marker, 1, 2)
         ############################################################
         steps = []
         for i in range(n_step + 1):
@@ -621,24 +642,21 @@ def vis_progressX(graph, projected_X, simple=False, mode='file', color=None, _co
                       )
         fig.layout.update(layout)
 
-    if mode == 'file':
-        plotly.offline.plot(fig, **kwargs)
-
-    elif mode == 'web':
-        plotly.offline.iplot(fig, **kwargs)
-    elif mode == 'obj':
-        return fig
-    else:
-        print("mode params must be one of 'file', 'web', 'obj'. \n 'file': output html file \n 'web': show in web browser. \n 'obj': return a dict object.")
+    return write_figure(fig, mode, **kwargs)
 
 
-def draw_enriched_plot(graph, safe_score, fea, metainfo, _filter_size=0, **kwargs):
+def draw_enriched_plot(graph,
+                       safe_score,
+                       fea,
+                       metainfo,
+                       _filter_size=0,
+                       mode='file',
+                       **kwargs):
     """
-    Draw simple node network which only show component which is larger than _filter_size and colorized with
-    its safe_score.
+    Draw simple node network which only show component which is larger than _filter_size and colorized with its safe_score.
 
-    :param graph:
-    :param safe_score:
+    :param tmap.tda.Graph.Graph graph:
+    :param pd.DataFrame safe_score:
     :param fea:
     :param metainfo:
     :param _filter_size:
@@ -647,13 +665,15 @@ def draw_enriched_plot(graph, safe_score, fea, metainfo, _filter_size=0, **kwarg
     """
     enriched_nodes, comps_nodes = metainfo[fea]
 
-    node_pos = graph["node_positions"]
-    sizes = graph["node_sizes"][:, 0]
+    node_pos = graph.nodePos
+    sizes = graph.size
+    safe_score = safe_score.to_dict(orient='dict')
+
     fig = plotly.tools.make_subplots(1, 1)
     xs = []
     ys = []
 
-    for edge in graph["edges"]:
+    for edge in graph.edges:
         xs += [node_pos[edge[0], 0],
                node_pos[edge[1], 0],
                None]
@@ -678,6 +698,7 @@ def draw_enriched_plot(graph, safe_score, fea, metainfo, _filter_size=0, **kwarg
         if _filter_size:
             if len(nodes) <= _filter_size:
                 continue
+
         tmp1 = {k: v if k in nodes else np.nan for k, v in safe_score[fea].items()}
         node_position = go.Scatter(
             # node position
@@ -699,10 +720,18 @@ def draw_enriched_plot(graph, safe_score, fea, metainfo, _filter_size=0, **kwarg
     fig.layout.height = 1500
     fig.layout.width = 1500
     fig.layout.hovermode = 'closest'
-    plotly.offline.plot(fig, **kwargs)
+    return write_figure(fig, mode, **kwargs)
 
 
-def pair_draw(data, projected_X, fit_result, safe_scores, graph, fea1, fea2=None, n_iter=5000, p_value=0.05, ):
+def compare_draw(data,
+                 graph,
+                 fit_result,
+                 safe_scores,
+                 fea1,
+                 fea2=None,
+                 nr_threshold=0.5,
+                 mode='obj',
+                 **kwargs):
     if fea2 is not None:
         col = 2
         subtitles = ['%s ordination' % fea1,
@@ -719,12 +748,13 @@ def pair_draw(data, projected_X, fit_result, safe_scores, graph, fea1, fea2=None
     fig = tools.make_subplots(2, col, subplot_titles=subtitles,
                               horizontal_spacing=0,
                               vertical_spacing=0)
+    projected_X = graph.data
 
-    def draw_ord_and_tmap(fig, projected_X, fit_result, fea, row, col, data):
+    def draw_ord_and_tmap(fig, fit_result, fea, row, col, data):
         if fea in data.columns:
             color = Color(data.loc[:, fea].astype(float), target_by='sample')
         else:
-            print('Error occur, %s seem like a new feature for given data' % fea)
+            raise Exception('Error occur, %s seem like a new feature for given data' % fea)
 
         fig.append_trace(go.Scatter(x=projected_X[:, 0],
                                     y=projected_X[:, 1],
@@ -740,15 +770,19 @@ def pair_draw(data, projected_X, fit_result, safe_scores, graph, fea1, fea2=None
                                         mode='lines+text', showlegend=False,
                                         text=['', round(fit_result.loc[fea, 'r2'], 4)]), row, col)
 
-    min_p_value = 1.0 / (n_iter + 1.0)
-    threshold = np.log10(p_value) / np.log10(min_p_value)
-    enriched_nodes = get_significant_nodes(graph, safe_scores, threshold, graph) #todo
+    enriched_nodes = get_significant_nodes(graph=graph,
+                                           safe_scores=safe_scores,
+                                           nr_threshold=nr_threshold
+                                           )  # todo
 
     fig_container = []
     for idx, fea in enumerate(feas):
         draw_ord_and_tmap(fig, projected_X, fit_result, fea, idx + 1, 1, data)
         cache = {node: safe_scores[fea][node] if node in enriched_nodes[fea] else 0 for node in safe_scores[fea].keys()}
-        f = vis_progressX(graph, projected_X, color=Color(cache, target_by='node'), mode='obj', simple=True)
+        f = vis_progressX(graph,
+                          color=Color(cache, target_by='node'),
+                          mode='obj',
+                          simple=True)
         fig_container.append(f)
 
     for idx, f in enumerate(fig_container):
@@ -771,6 +805,5 @@ def pair_draw(data, projected_X, fit_result, safe_scores, graph, fea1, fea2=None
     fig.layout.font.update(dict(size=20))
     for _ in fig.layout.annotations:
         _['font'].update(dict(size=25))
-    return fig
-    # plotly.offline.plot(fig, auto_open=False, **kwargs)
-    # plotly.offline.iplot(fig)
+
+    return write_figure(fig, mode, **kwargs)

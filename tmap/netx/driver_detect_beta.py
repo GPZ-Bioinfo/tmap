@@ -2,6 +2,8 @@
 # test pipelines which includes SHAP and xgboost.
 # incoming pipeline which doesn't implement yet.
 # lth 2018-12-10
+
+# failed at 20190328
 ####
 
 import itertools
@@ -23,8 +25,7 @@ from tqdm import tqdm
 from tmap.tda import mapper, Filter
 from tmap.tda.cover import Cover
 from tmap.tda.metric import Metric
-from tmap.tda.utils import construct_node_data
-from tmap.tda.utils import optimize_dbscan_eps, cover_ratio, optimal_r
+from tmap.tda.utils import optimize_dbscan_eps, optimal_r
 
 global_verbose = 1
 

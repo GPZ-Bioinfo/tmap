@@ -1,17 +1,19 @@
 from __future__ import print_function
 
 import csv
+import json
 import os
 import pickle
-import json
 
 import networkx as nx
 import numpy as np
 import pandas as pd
+import plotly
 import scipy.stats as scs
+from pandas.api.types import is_categorical_dtype
 from sklearn.neighbors import *
 from sklearn.preprocessing import MinMaxScaler
-from pandas.api.types import is_categorical_dtype,is_numeric_dtype
+
 from tmap.tda import mapper
 from tmap.tda.cover import Cover
 
@@ -57,19 +59,21 @@ def optimal_r(X, projected_X, clusterer, mid, overlap, step=1):
     print("suitable resolution is ", mid)
     return mid
 
+
 def unify_data(data):
     if 'iloc' in dir(data):
         # pd.DataFrame
         return data
-    elif type(data) == list or isinstance(data,np.ndarray):
+    elif type(data) == list or isinstance(data, np.ndarray):
         return pd.DataFrame(data)
     elif type(data) == dict:
-        return pd.DataFrame.from_dict(data,orient='index')
+        return pd.DataFrame.from_dict(data, orient='index')
     else:
         print('Unkown data type')
         return
 
-def transform2node_data(graph, data,mode='mean'):
+
+def transform2node_data(graph, data, mode='mean'):
     map_fun = {'sum': np.sum,
                'weighted_sum': np.sum,
                'weighted_mean': np.mean,
@@ -87,21 +91,23 @@ def transform2node_data(graph, data,mode='mean'):
         node_data = pd.DataFrame.from_dict(node_data, orient='index', columns=data.columns)
         return node_data
 
-def transform2sample_data(graph,data):
+
+def transform2sample_data(graph, data):
     nodes = graph.nodes
     rawdata = unify_data(data)
     datas = []
     if rawdata is not None:
         for nid, attr in nodes.items():
-            cache = [rawdata.loc[[nid],:]]* len(attr['sample'])
+            cache = [rawdata.loc[[nid], :]] * len(attr['sample'])
             cache = pd.concat(cache)
             cache.index = list(attr['sample'])
             datas.append(cache)
-        sample_data = pd.concat(datas,axis=0)
+        sample_data = pd.concat(datas, axis=0)
         # todo: average the same index id row. result is larger than the number of origin sample
         return sample_data
 
-def verify_metadata(graph,meta_data,by='node'):
+
+def verify_metadata(graph, meta_data, by='node'):
     """
     DO:
       1. transform metadata into ``pd.DataFrame``
@@ -119,7 +125,7 @@ def verify_metadata(graph,meta_data,by='node'):
     elif meta_data.shape[0] != graph.rawX.shape[0] and meta_data.shape[1] != graph.rawX.shape[0]:
         raise SyntaxError("Wrong metadata provided. row should be samples(even the column isn't sample)...(Wrong number detected)")
 
-    all_cat = np.array([is_categorical_dtype(meta_data.loc[:,col]) for col in meta_data])
+    all_cat = np.array([is_categorical_dtype(meta_data.loc[:, col]) for col in meta_data])
     if any(all_cat):
         print("Detecting categorical column, it will automatically remove it and go on the anaylsis.")
         meta_data = meta_data.loc[:, ~all_cat]
@@ -127,11 +133,12 @@ def verify_metadata(graph,meta_data,by='node'):
             exit('no columns remaining... (So sad....>.<)')
 
     if by == 'node':
-        meta_data = graph.transform_sn(meta_data,type='s2n')
+        meta_data = graph.transform_sn(meta_data, type='s2n')
     else:
         pass
         # don't do anything.
     return meta_data
+
 
 def node2samples(node2s, safe_dict):
     """
@@ -179,7 +186,7 @@ def safe_scores_IO(arg, output_path=None, mode='w'):
         return safe_scores
 
 
-def read_graph(path,method='pickle'):
+def read_graph(path, method='pickle'):
     if method == 'pickle':
         graph = pickle.load(open(path, 'rb'))
     elif method == 'json':
@@ -191,13 +198,13 @@ def read_graph(path,method='pickle'):
     return graph
 
 
-def dump_graph(graph, path,method='pickle'):
+def dump_graph(graph, path, method='pickle'):
     # method must one of 'pickle' or 'json'.
     if method == 'pickle':
         pickle.dump(graph, open(path, "wb"))
-    elif method =='json':
+    elif method == 'json':
         # currently it will raise error because json can't dump ndarry directly.
-        json.dump(graph,open(path,'w'))
+        json.dump(graph, open(path, 'w'))
     else:
         print('Wrong method provided, currently acceptable method are [pickle|json].')
 
@@ -218,6 +225,8 @@ def output_graph(graph, filepath, sep='\t'):
         spamwriter.writerow(['Source', 'Target'])
         for source, target in edges:
             spamwriter.writerow([source, target])
+
+
 #
 # def output_Node_data(graph,filepath,data,features = None,sep='\t',target_by='sample'):
 #     """
@@ -256,3 +265,57 @@ def output_graph(graph, filepath, sep='\t'):
 #         spamwriter.writerow(['NodeID'] + features)
 #         for idx,v in enumerate(node_keys):
 #             spamwriter.writerow([str(v)] + [str(_) for _ in data[idx,:]])
+def write_figure(fig, mode, **kwargs):
+    if mode == 'file':
+        plotly.offline.plot(fig, **kwargs)
+
+    elif mode == 'web':
+        plotly.offline.iplot(fig, **kwargs)
+    elif mode == 'obj':
+        return fig
+    else:
+        r = input("mode params must be one of 'file', 'web', 'obj'. \n 'file': output html file \n 'web': show in web browser. \n 'obj': return a dict object.")
+        if r.lower() in ['file', 'web', 'obj']:
+            write_figure(fig, mode=r)
+
+
+def c_node_text(nodes, sample_names, target_v_raw):
+    # values output from color.target. It need to apply mean function for a samples-length color.target.
+    node_text = [str(n) +
+                 # node id
+                 "<Br>vals:%s<Br>" % '{:.6f}'.format(v) +
+                 # node values output from color.target.
+                 '<Br>'.join(list(sample_names[nodes[n]['sample']][:8]) + ['......']
+                             if len(sample_names[nodes[n]['sample']]) >= 8  # too long will make the node doesn't hover anythings.
+                             else sample_names[nodes[n]['sample']]) for n, v in
+                 # samples name concated with line break.
+                 zip(nodes,
+                     target_v_raw)]
+    return node_text
+
+
+# accessory for envfit
+
+def get_arrows(graph, safe_score, max_length=1, pvalue=0.05):
+    min_p_value = 1.0 / (5000 + 1.0)
+    threshold = np.log10(pvalue) / np.log10(min_p_value)
+
+    node_pos = graph.nodePos
+
+    safe_score_df = pd.DataFrame.from_dict(safe_score, orient='columns')
+    safe_score_df = safe_score_df.where(safe_score_df >= threshold, other=0)
+    norm_df = safe_score_df.apply(lambda x: maxabs_scale(x), axis=1, result_type='broadcast')
+
+    x_cor = norm_df.apply(lambda x: x * node_pos.values[:, 0], axis=0)
+    y_cor = norm_df.apply(lambda x: x * node_pos.values[:, 1], axis=0)
+
+    x_cor = x_cor.mean(0)
+    y_cor = y_cor.mean(0)
+    arrow_df = pd.DataFrame([x_cor, y_cor], index=['x coordinate', 'y coordinate'], columns=safe_score_df.columns)
+    all_fea_scale = maxabs_scale(safe_score_df.sum(0))
+    # scale each arrow by the sum of safe score， maximun is 1 others are percentage not larger than 100%.
+    scaled_ratio = max_length * all_fea_scale / arrow_df.apply(lambda x: np.sqrt(np.sum(x ** 2)), axis=0)
+    # using max length to multipy by scale ratio and denote the original length.
+    scaled_arrow_df = arrow_df * np.repeat(scaled_ratio.values.reshape(1, -1), axis=0, repeats=2).reshape(2, -1)
+
+    return scaled_arrow_df

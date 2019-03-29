@@ -6,6 +6,7 @@ import pandas as pd
 from scipy.spatial.distance import squareform, pdist
 
 from tmap.tda import utils
+from tmap.tda.plot import show, Color
 
 
 class Graph(nx.Graph):
@@ -13,7 +14,7 @@ class Graph(nx.Graph):
     Main class of tmap.
     """
 
-    def __init__(self, X, name=''):
+    def __init__(self, X=None, name=''):
         super(Graph, self).__init__(name=name)
         X = utils.unify_data(X)
         self.rawX = X  # sample x features
@@ -33,11 +34,11 @@ class Graph(nx.Graph):
             Used params: 
             {str_p}
             """.format(name=self.name,
-                   num_n=len(self.nodes),
-                   num_s=len(self.remaining_samples),
-                   loss_p=self.cover_ratio(),
-                   str_p=self.params
-                   )
+                       num_n=len(self.nodes),
+                       num_s=len(self.remaining_samples),
+                       loss_p=self.cover_ratio(),
+                       str_p=self.params
+                       )
         description = '\n'.join([_.strip(' ') for _ in description.split('\n')])
         return description
 
@@ -112,6 +113,18 @@ class Graph(nx.Graph):
         neighbor_sample_names = self.sid2sname(neighbor_samples)
         return neighbor_sample_names
 
+
+    def get_component_nodes(self,nodes):
+        """
+        Given a list of enriched nodes which comes from ``get_enriched_nodes``. Normally it the enriched_centroid instead of the others nodes around them.
+        :param list enriched_nodes: list of nodes ID which is enriched with given feature and threshold.
+        :return: A nested list which contain multiple list of nodes which is not connected to each other.
+        """
+        g = nx.subgraph(self, nodes)
+        comp_nodes = [nodes for nodes in nx.algorithms.components.connected_components(g)]
+        return comp_nodes
+
+
     def get_shared_samples(self, node_u, node_v):
         """
         :param node_u: name  of node
@@ -140,6 +153,8 @@ class Graph(nx.Graph):
         :return: return a dict with keys of nodes, values is a list of another node ids.
         """
         all_length = [dist for k1, v1 in self.all_length.items() for dist in v1.values()]
+        # remove self-distance (that is 0)
+        all_length = [_ for _ in all_length if _ > 0]
         length_threshold = np.percentile(all_length, nr_threshold)
         if nodeid is not None:
             if type(nodeid) == int:
@@ -180,7 +195,9 @@ class Graph(nx.Graph):
         # weighted neighborhood scores by node size
         neighborhood_scores = {k: aggregated_fun(nv[neighbors, :], 0)
                                for k, neighbors in neighborhoods.items()}
-        neighborhood_scores = pd.DataFrame.from_dict(neighborhood_scores, orient="index", columns=node_data.columns)
+        neighborhood_scores = pd.DataFrame.from_dict(neighborhood_scores,
+                                                     orient="index",
+                                                     columns=node_data.columns)
         # neighborhood_scores = neighborhood_scores.reindex(node_data.index)
         return neighborhood_scores
 
@@ -321,7 +338,7 @@ class Graph(nx.Graph):
         self.update_dist()
 
     def _add_node_pos(self, n_pos):
-        self.nodePos = n_pos
+        self.nodePos = n_pos  # average pos from cover.data
 
     def _record_params(self, params):
         """
@@ -360,13 +377,35 @@ class Graph(nx.Graph):
         pass
 
     # visualization
-    def quick_view(self):
-        return
+    def show(self, **kwargs):
+        show(self, mode=None, **kwargs)
 
-    def show_samples(self, samples):
-        return
+    def show_samples(self, samples, **kwargs):
+        nids = self.sample2nodes(samples)
+        target = [1 if nid in nids else 0 for nid in self.nodes]
+        color = Color(target, target_by='node', dtype='categorical')
+        show(self, mode=None, color=color, **kwargs)
+
 
     # attr
+    @property
+    def size(self):
+        self.check_empty()
+        return {n: self.nodes[n]['size'] for n in self.nodes}
+
+    @property
+    def sample_names(self):
+        self.check_empty()
+        return self.rawX.index
+
+    @property
+    def data(self):
+        """
+        projected data which passed to ``filter``
+        :return:
+        """
+        return self.cal_params['used_data']['projected_data']
+
     @property
     def adjmatrix(self):
         return nx.adj_matrix(self)

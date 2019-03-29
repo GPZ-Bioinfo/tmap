@@ -9,7 +9,7 @@ from tmap.tda.utils import verify_metadata, unify_data
 def _permutation(data, graph=None, shuffle_by='node'):
     """
 
-    :param data:  dynamic shape depending on the by.
+    :param data: dynamic shape depending on the by.
     :param graph:
     :param shuffle_by: one of node|sample
     :return: it must be a matrix with node x features shapes.
@@ -20,7 +20,8 @@ def _permutation(data, graph=None, shuffle_by='node'):
         assert p_data.shape[0] == len(graph.nodes)
         # permute the node attributes, with the network structure kept
         # inplace change
-        p_data = p_data.apply(lambda col: np.random.permutation(col), axis=0)
+        p_data = p_data.apply(lambda col: np.random.permutation(col),
+                              axis=0)
         return p_data
 
     elif shuffle_by == 'sample':
@@ -115,7 +116,7 @@ def _SAFE(graph, data, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffl
         return safe_scores_decline
 
 
-def SAFE_batch(graph, metadata, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffle_by="node", _mode='enrich', agg_mode='sum', verbose=1, **kwargs):
+def SAFE_batch(graph, metadata, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffle_by="node", _mode='enrich', agg_mode='sum', verbose=1, name=None, **kwargs):
     """
     Entry of SAFE analysis
     Map sample meta-data to node associated values (using means),
@@ -152,19 +153,24 @@ def SAFE_batch(graph, metadata, n_iter=1000, nr_threshold=0.5, neighborhoods=Non
                             verbose=verbose)
 
     # record SAFE params
-    params = {'shuffle_by': shuffle_by,
-              # '_mode':_mode,
-              'agg_mode': agg_mode,
-              'nr_threshold': nr_threshold,
-              'n_iter': n_iter}
+    _params = {'shuffle_by': shuffle_by,
+               # '_mode':_mode,
+               'agg_mode': agg_mode,
+               'nr_threshold': nr_threshold,
+               'n_iter': n_iter,
+               'name': name}
+
     if _mode == 'both':
+        params = _params.copy()
         params['data'] = all_safe_scores[0]
         params['_mode'] = 'enrich'
         graph._add_safe(params)
+        params = _params.copy()
         params['data'] = all_safe_scores[1]
         params['_mode'] = 'decline'
         graph._add_safe(params)
     else:
+        params = _params.copy()
         params['data'] = all_safe_scores
         params['_mode'] = _mode
         graph._add_safe(params)
@@ -173,17 +179,23 @@ def SAFE_batch(graph, metadata, n_iter=1000, nr_threshold=0.5, neighborhoods=Non
 
 def get_significant_nodes(graph,
                           safe_scores,
-                          SAFE_pvalue=None,
                           nr_threshold=0.5,
                           pvalue=0.05,
                           n_iter=None,
-                          centroids=False):
+                          SAFE_pvalue=None,
+                          r_neighbor=False):
     """
     get significantly enriched/declined nodes (>= threshold)
     Difference between centroides and nodes:
-
+        1. centroides mean the node itself
+        2. neighbor_nodes mean the neighbor nodes during SAFE calculation
+    :param tmap.tda.Graph.Graph graph:
     :param safe_scores:
-    :param threshold:
+    :param nr_threshold:
+    :param pvalue:
+    :param n_iter:
+    :param SAFE_pvalue:
+    :param r_neighbor:
     :return:
     """
     neighborhoods = graph.get_neighborhoods(nr_threshold=nr_threshold)
@@ -198,18 +210,18 @@ def get_significant_nodes(graph,
 
     filter_dict = safe_scores.where(safe_scores >= SAFE_pvalue).to_dict()
 
-    significant_centroides = {k: [v for v in vlist
-                                  if not pd.isnull(v)] for k,
-                                                           vlist in filter_dict.items()}
+    significant_centroids = {k: [v for v in vlist
+                                 if not pd.isnull(v)] for k,
+                                                          vlist in filter_dict.items()}
 
-    significant_nodes = {f: list(set([n for n in nodes
-                                      for n in neighborhoods[n]]))
-                         for f, nodes in significant_centroides.items()}
+    significant_neighbor_nodes = {f: list(set([n for n in nodes
+                                               for n in neighborhoods[n]]))
+                                  for f, nodes in significant_centroids.items()}
 
-    if centroids:
-        return significant_centroides, significant_nodes
+    if r_neighbor:
+        return significant_centroids, significant_neighbor_nodes
     else:
-        return significant_nodes
+        return significant_centroids
 
 
 def get_enriched_samples(enriched_nodes, nodes):
@@ -244,28 +256,29 @@ def get_SAFE_summary(graph, metadata, safe_scores, n_iter=None, p_value=0.01, nr
     feature_names = safe_scores.index
 
     safe_total_score = safe_scores.sum(1)
-    safe_significant_centroides, safe_significant_nodes = get_significant_nodes(graph,
-                                                                                safe_scores=safe_scores,
-                                                                                pvalue=p_value,
-                                                                                nr_threshold=nr_threshold,
-                                                                                n_iter=n_iter,
-                                                                                centroids=True)
+    safe_significant_centroids, safe_significant_neighbor_nodes = get_significant_nodes(graph,
+                                                                                        safe_scores=safe_scores,
+                                                                                        pvalue=p_value,
+                                                                                        nr_threshold=nr_threshold,
+                                                                                        n_iter=n_iter,
+                                                                                        r_neighbor=True)
 
     safe_enriched_nodes_n = {feature: len(node_ids) for feature,
-                                                        node_ids in safe_significant_nodes.items()}
+                                                        node_ids in safe_significant_centroids.items()}
 
     safe_significant_samples = {f: graph.node2sample(nodes) for f,
-                                                                nodes in safe_significant_nodes.items()}
+                                                                nodes in safe_significant_centroids.items()}
 
     safe_significant_samples_n = {feature: len(sample_names) for feature,
                                                                  sample_names in safe_significant_samples.items()}
 
     safe_significant_score = {feature: np.sum(safe_scores.loc[feature,
-                                                              safe_significant_centroides[feature]])
+                                                              safe_significant_centroids[feature]])
                               for feature in feature_names}
 
     if _output_details:
-        safe_summary = {'enriched_nodes': safe_significant_nodes,
+        safe_summary = {'enriched_neighbor_nodes': safe_significant_neighbor_nodes,
+                        'enriched_centroids_nodes': safe_significant_centroids,
                         'enriched_score': safe_significant_score, }
         return safe_summary
 

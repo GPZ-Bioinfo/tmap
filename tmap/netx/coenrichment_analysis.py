@@ -1,28 +1,27 @@
-import networkx as nx
 import numpy as np
 import pandas as pd
 import scipy.stats as scs
 from tqdm import tqdm
 
-from tmap.netx.SAFE import get_enriched_nodes
+from tmap.netx.SAFE import get_significant_nodes
 
-
-def get_component_nodes(graph, enriched_nodes):
-    """
-    Given a list of enriched nodes which comes from ``get_enriched_nodes``. Normally it the enriched_centroid instead of the others nodes around them.
-    :param list enriched_nodes: list of nodes ID which is enriched with given feature and threshold.
-    :param graph:
-    :return: A nested list which contain multiple list of nodes which is not connected to each other.
-    """
-    sub_nodes = list(enriched_nodes)
-    sub_edges = [edge for edge in graph['edges'] if edge[0] in sub_nodes and edge[1] in sub_nodes]
-
-    G = nx.Graph()
-    G.add_nodes_from(sub_nodes)
-    G.add_edges_from(sub_edges)
-
-    comp_nodes = [nodes for nodes in nx.algorithms.components.connected_components(G)]
-    return comp_nodes
+#
+# def get_component_nodes(graph, enriched_nodes):
+#     """
+#     Given a list of enriched nodes which comes from ``get_enriched_nodes``. Normally it the enriched_centroid instead of the others nodes around them.
+#     :param list enriched_nodes: list of nodes ID which is enriched with given feature and threshold.
+#     :param graph:
+#     :return: A nested list which contain multiple list of nodes which is not connected to each other.
+#     """
+#     sub_nodes = list(enriched_nodes)
+#     sub_edges = [edge for edge in graph.edges if edge[0] in sub_nodes and edge[1] in sub_nodes]
+#
+#     G = nx.Graph()
+#     G.add_nodes_from(sub_nodes)
+#     G.add_edges_from(sub_edges)
+#
+#     comp_nodes = [nodes for nodes in nx.algorithms.components.connected_components(G)]
+#     return comp_nodes
 
 
 def is_enriched(s1, s2, s3, s4):
@@ -79,12 +78,12 @@ def coenrichment_for_nodes(graph, nodes, fea, enriched_centroid, SAFE_pvalue=Non
     For local correlative, keys are tuples of (index of components, size of components, features) and values are as same as global correlative.
     The remaining metainfo is a dictionary shared same key to global/local correlative but contains contingency table info.
 
-    :param graph: tmap constructed graph
+    :param tmap.tda.Graph.Graph graph: tmap constructed graph
     :param list nodes: a list of nodes you want to process from specific feature
     :param str fea: feature name which doesn't need to exist at enriched_centroid
     :param dict enriched_centroid: enriched_centroide output from ``get_enriched_nodes``
     :param float threshold: None or a threshold for SAFE score. If it is a None, it will not filter the nodes.
-    :param dict safe_scores: A dictionary which store SAFE_scores for filter the nodes. If you want to filter the nodes, it must simultaneously give safe_scores and threshold.
+    :param pd.DataFrame safe_scores: A DataFrame which store SAFE_scores for filter the nodes. If you want to filter the nodes, it must simultaneously give safe_scores and threshold.
     :param str mode: [both|global|local]
     :return:
     """
@@ -93,8 +92,10 @@ def coenrichment_for_nodes(graph, nodes, fea, enriched_centroid, SAFE_pvalue=Non
         print("Wrong syntax input, mode should be one of [both|global|local]")
         return
 
-    total_nodes = set(list(graph["nodes"].keys()))
-    comp_nodes = get_component_nodes(graph, nodes)
+    total_nodes = set(graph.nodes)
+    comp_nodes = graph.get_component_nodes(nodes)
+    safe_scores = safe_scores.to_dict(orient='dict')
+
     metainfo = {}
     global_correlative_feas = {}
     sub_correlative_feas = {}
@@ -174,8 +175,8 @@ def batch_coenrichment(fea, graph, safe_scores, n_iter=5000, p_value=0.05, _pre_
     If _pre_cal_enriched was given, n_iter and p_value will be useless. Or you should modify n_iter and p_value as the params you passed to ``SAFE`` algorithm.
 
     :param str/list fea: A single feature or a list of feature which is already applied SAFE algorithm.
-    :param graph:
-    :param dict safe_scores: A SAFE score output from ``SAFE_batch`` which must contain all values occur at fea.
+    :param tmap.tda.Graph.Graph graph:
+    :param pd.DataFrame safe_scores: A SAFE score output from ``SAFE_batch`` which must contain all values occur at fea.
     :param int n_iter: Permutation times used at ``SAFE_batch``.
     :param float p_value: The p-value to determine the enriched nodes.
     :param dict _pre_cal_enriched: A pre calculated enriched_centroid which comprised all necessary features will save time.
@@ -184,6 +185,7 @@ def batch_coenrichment(fea, graph, safe_scores, n_iter=5000, p_value=0.05, _pre_
     global_correlative_feas = {}
     sub_correlative_feas = {}
     metainfo = {}
+    safe_scores = safe_scores.to_dict(orient='dict')
     print('building network...')
 
     if '__iter__' in dir(fea):
@@ -196,12 +198,18 @@ def batch_coenrichment(fea, graph, safe_scores, n_iter=5000, p_value=0.05, _pre_
     for fea in fea_batch:
         if fea in safe_scores.keys():
             if not _pre_cal_enriched:
-                min_p_value = 1.0 / (n_iter + 1.0)
-                threshold = np.log10(p_value) / np.log10(min_p_value)
-                enriched_centroid, enriched_nodes = get_enriched_nodes(pd.DataFrame.from_dict(safe_scores, orient='index'), threshold, graph, centroids=True)
+                enriched_centroid, enriched_node = get_significant_nodes(graph=graph,
+                                                                          safe_scores=safe_scores,
+                                                                          pvalue=p_value,
+                                                                          n_iter=n_iter,
+                                                                          r_neighbor=True)
             else:
                 enriched_centroid = _pre_cal_enriched
-            _global, _local, _meta = coenrichment_for_nodes(graph, enriched_centroid[fea], fea, enriched_centroid, mode='both')
+
+            _global, _local, _meta = coenrichment_for_nodes(graph,
+                                                            enriched_centroid[fea],
+                                                            fea,
+                                                            enriched_centroid, mode='both')
             global_correlative_feas.update(_global)
             sub_correlative_feas.update(_local)
             metainfo.update(_meta)
@@ -264,7 +272,12 @@ def construct_correlative_metadata(fea, global_correlative_feas, sub_correlative
         else:
             coverage = ((len(s1) + len(s2)) / (len(s1) + len(s3))) * 100
 
-        global_corr_df = global_corr_df.append(pd.DataFrame([[o_f, f_p, ranksum_p1, ranksum_p2, coverage]], columns=global_headers))
+        global_corr_df = global_corr_df.append(pd.DataFrame([[o_f,
+                                                              f_p,
+                                                              ranksum_p1,
+                                                              ranksum_p2,
+                                                              coverage]],
+                                                            columns=global_headers))
 
     # processing subgraph correlative feas
     sub_corr_df = pd.DataFrame(columns=sub_headers)
@@ -294,32 +307,41 @@ def pairwise_coenrichment(graph, safe_scores, n_iter=5000, p_value=0.05, _pre_ca
     If _pre_cal_enriched was given, n_iter and p_value is not useless.
     Or you should modify n_iter and p_value to fit the params you passed to ``SAFE`` algorithm.
 
-    :param graph:
-    :param dict safe_scores: A SAFE score output from ``SAFE_batch`` which must contain all values occur at fea.
+    :param tmap.tda.Graph.Graph graph:
+    :param pd.DataFrame safe_scores: A SAFE score output from ``SAFE_batch`` which must contain all values occur at fea.
     :param int n_iter: Permutation times used at ``SAFE_batch``.
     :param float p_value: The p-value to determine the enriched nodes.
     :param dict _pre_cal_enriched: A pre calculated enriched_centroid which comprised all necessary features will save time.
     :param verbose:
     :return:
     """
-    dist_matrix = pd.DataFrame(data=np.nan, index=safe_scores.keys(), columns=safe_scores.keys())
+
+    dist_matrix = pd.DataFrame(data=np.nan,
+                               index=safe_scores.column,
+                               columns=safe_scores.columns)
     if verbose:
         print('building network...')
-        iter_obj = tqdm(safe_scores.keys())
+        iter_obj = tqdm(safe_scores.columns)
     else:
-        iter_obj = safe_scores.keys()
+        iter_obj = safe_scores.columns
 
     if not _pre_cal_enriched:
-        min_p_value = 1.0 / (n_iter + 1.0)
-        SAFE_pvalue = np.log10(p_value) / np.log10(min_p_value)
-        enriched_centroid, enriched_nodes = get_enriched_nodes(pd.DataFrame.from_dict(safe_scores, orient='index'), SAFE_pvalue, graph, centroids=True)
+        enriched_centroid, enriched_nodes = get_significant_nodes(graph=graph,
+                                                                  safe_scores=safe_scores,
+                                                                  pvalue=p_value,
+                                                                  n_iter=n_iter,
+                                                                  r_neighbor=True)
     else:
         enriched_centroid = _pre_cal_enriched
 
     for fea in iter_obj:
-        _global, _meta = coenrichment_for_nodes(graph, enriched_centroid[fea], fea, enriched_centroid, mode='global', _filter=False)
+        _global, _meta = coenrichment_for_nodes(graph,
+                                                enriched_centroid[fea],
+                                                fea, enriched_centroid,
+                                                mode='global',
+                                                _filter=False)
         # _filter to fetch raw fisher-exact test result without any cut-off values.
-        for o_f in safe_scores.keys():
+        for o_f in safe_scores.columns:
             if fea != o_f:
                 s1, s2, s3, s4 = _meta[o_f]
                 oddsratio, pvalue = _global[o_f]

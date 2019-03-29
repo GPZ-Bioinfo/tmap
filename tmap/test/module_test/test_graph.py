@@ -66,11 +66,11 @@ graph.update_dist()
 assert graph.get_neighborhoods(nodeid=[5, 2, 3], nr_threshold=4) == {5: [5, 4, 13, 14, 15],
                                                                      2: [2, 1, 3, 10, 11, 12],
                                                                      3: [3, 2, 4, 11, 12, 13]}
-assert graph.get_neighborhoods(nodeid=[23]) == {23: [23]}
+assert graph.get_neighborhoods(nodeid=[23]) == {23: [23, 14, 15, 24]}
 
 neighborhodds = graph.get_neighborhoods(nr_threshold=4)
 node_data = graph.transform_sn(X)
-assert graph.neighborhood_score(node_data).iloc[32, 1] - -0.11744862933577845 <= 1e-6
+assert graph.neighborhood_score(node_data).iloc[32, 1] - -0.49188710882588677 <= 1e-6
 assert graph.neighborhood_score(node_data,
                                 neighborhoods=neighborhodds,
                                 mode='mean').iloc[32, 1] - -0.12297177720647169 <= 1e-6
@@ -84,15 +84,20 @@ assert graph.neighborhood_score(node_data,
 assert graph.cubes.shape == (400, 5000)
 assert graph.adjmatrix.shape == (183, 183)
 
-assert graph.samples_neighbors(5, nr_threshold=10) == ['t98', 't132', 't134', 't135',
-                                                       't88', 't122', 't120', 't62',
-                                                       't95']
-assert graph.samples_neighbors('t5', nr_threshold=10) == ['t98', 't132', 't134', 't135',
-                                                       't88', 't122', 't120', 't62',
-                                                       't95']
+assert graph.samples_neighbors(5, nr_threshold=10) == ['t98', 't132', 't134', 't135', 't6', 't73',
+                                                       't120', 't110', 't111','t156', 't88', 't122',
+                                                       't123', 't124', 't61', 't62', 't95']
+
+assert graph.samples_neighbors('t5', nr_threshold=10) == ['t98', 't132', 't134', 't135', 't6', 't73', 't120',
+                                                          't110', 't111','t156', 't88', 't122', 't123', 't124',
+                                                          't61', 't62', 't95']
 assert graph.samples_neighbors('t4997', nr_threshold=10) == []  # dropped samples
 
-assert set(graph.samples_neighbors([2, 3], nr_threshold=5)) == {'t108', 't114', 't128', 't121', 't59', 't65', 't58', 't61', 't24', 't46', 't167', 't72', 't129', 't19', 't117', 't86', 't90', 't77', 't107', 't78', 't118', 't37', 't158', 't30', 't85', 't157', 't73', 't156'}
+assert set(graph.samples_neighbors([2, 3], nr_threshold=5)) == {'t71', 't108', 't90', 't114', 't30', 't6', 't129', 't121', 't157',
+       't86', 't65', 't24', 't25', 't107', 't128', 't73', 't156', 't58',
+       't134', 't118', 't61', 't78', 't117', 't37', 't122', 't98', 't46',
+       't72', 't82', 't85', 't64', 't63', 't19', 't77', 't16', 't158',
+       't88', 't59', 't167'}
 
 assert graph.get_shared_samples(5,4) == {'t2805', 't4101', 't604'}
 assert graph.get_shared_samples(5,3) is None

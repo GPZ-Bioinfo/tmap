@@ -160,7 +160,8 @@ class Mapper(object):
             print("...calculate projection coordinates of nodes.")
 
         node_keys = list(nodes.keys())
-        node_positions = np.zeros((len(nodes), cover.data.shape[1]))
+        node_positions = np.zeros((len(nodes),
+                                   cover.data.shape[1]))
         node_sizes = np.zeros((len(nodes), 1))
         for i, node_id in enumerate(node_keys):
             data_in_node = cover.data[nodes[node_id], :]

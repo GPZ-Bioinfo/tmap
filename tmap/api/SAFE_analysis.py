@@ -40,10 +40,10 @@ def generate_SAFE_score(graph, metadata, n_iter=1000, pval=0.05, nr_threshold=0.
     if _mode == 'both':
         enriched_SAFE, declined_SAFE = SAFE_batch(graph, meta_data=metadata, n_iter=n_iter,
                                                   nr_threshold=nr_threshold, _cal_type=_cal_type, _mode=_mode, verbose=verbose)
-        enriched_SAFE_summary = get_SAFE_summary(graph=graph, meta_data=metadata, safe_scores=enriched_SAFE,
-                                                 n_iter_value=n_iter, p_value=pval)
-        declined_SAFE_summary = get_SAFE_summary(graph=graph, meta_data=metadata, safe_scores=declined_SAFE,
-                                                 n_iter_value=n_iter, p_value=pval)
+        enriched_SAFE_summary = get_SAFE_summary(graph=graph, metadata=metadata, safe_scores=enriched_SAFE,
+                                                 n_iter=n_iter, p_value=pval)
+        declined_SAFE_summary = get_SAFE_summary(graph=graph, metadata=metadata, safe_scores=declined_SAFE,
+                                                 n_iter=n_iter, p_value=pval)
         _pickle_safe_format['data'] = enriched_SAFE
         collect_result['raw']['enrich'] = copy.deepcopy(_pickle_safe_format)
         _pickle_safe_format['data'] = declined_SAFE
@@ -53,8 +53,8 @@ def generate_SAFE_score(graph, metadata, n_iter=1000, pval=0.05, nr_threshold=0.
     else:
         SAFE_data = SAFE_batch(graph, meta_data=metadata, n_iter=n_iter,
                                nr_threshold=nr_threshold, _cal_type=_cal_type, _mode=_mode, verbose=verbose)
-        SAFE_summary = get_SAFE_summary(graph=graph, meta_data=metadata, safe_scores=SAFE_data,
-                                        n_iter_value=n_iter, p_value=pval)
+        SAFE_summary = get_SAFE_summary(graph=graph, metadata=metadata, safe_scores=SAFE_data,
+                                        n_iter=n_iter, p_value=pval)
         _pickle_safe_format['data'] = SAFE_data
         collect_result['raw']['enrich'] = copy.deepcopy(_pickle_safe_format)
         collect_result['raw']['decline'] = copy.deepcopy(_pickle_safe_format)
