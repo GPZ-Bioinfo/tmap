@@ -3,9 +3,9 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.cluster import DBSCAN
 from tmap.tda import mapper, Filter
 from tmap.tda.cover import Cover
-from tmap.tda.plot import show, Color
+from tmap.tda.plot import Color
 from tmap.tda.metric import Metric
-from tmap.tda.utils import optimize_dbscan_eps,cover_ratio
+from tmap.tda.utils import optimize_dbscan_eps
 from tmap.test import load_data
 
 from matplotlib.pyplot import title
@@ -15,7 +15,7 @@ from scipy.spatial.distance import pdist,squareform
 X = load_data.Daily_genus_profile("stool")
 X = X.drop("Stool69",axis=0)
 metadata = load_data.Daily_metadata_ready()
-dm = squareform(pdist(X,metric="braycurtis"))
+dm = squareform(pdist(X, metric="braycurtis"))
 metadata = metadata.loc[X.index,:]
 
 # TDA Step1. initiate a Mapper
@@ -31,23 +31,29 @@ eps = optimize_dbscan_eps(X, threshold=99)
 clusterer = DBSCAN(eps=eps, min_samples=3)
 cover = Cover(projected_data=MinMaxScaler().fit_transform(projected_X), resolution=50, overlap=0.85)
 graph = tm.map(data=X, cover=cover, clusterer=clusterer)
-print('Graph covers %.2f percentage of samples.' % cover_ratio(graph,X))
+print('Graph covers %.2f percentage of samples.' % graph.cover_ratio())
 
 target_feature = 'COLLECTION_DAY'
-color = Color(target=metadata.loc[:, target_feature], dtype="numerical", target_by="sample")
-show(data=X, graph=graph, color=color, fig_size=(10, 10), node_size=15, mode='spring', strength=0.12)
+color = Color(target=metadata.loc[:, target_feature],
+              dtype="numerical",
+              target_by="sample")
+graph.show(color=color, fig_size=(10, 10), node_size=15, strength=0.12)
 
 target_feature = 'HOST_SUBJECT_ID'
-color = Color(target=metadata.loc[:, target_feature], dtype="categorical", target_by="sample")
-show(data=X, graph=graph, color=color, fig_size=(10, 10), node_size=15, mode='spring', strength=0.12)
+color = Color(target=metadata.loc[:, target_feature],
+              dtype="categorical",
+              target_by="sample")
+graph.show(color=color, fig_size=(10, 10), node_size=15,strength=0.12)
 
-color = Color(target=metadata.loc[:, target_feature], dtype="numerical", target_by="sample")
-show(data=X, graph=graph, color=color, fig_size=(10, 10), node_size=15, mode='spring', strength=0.12)
+color = Color(target=metadata.loc[:, target_feature],
+              dtype="numerical",
+              target_by="sample")
+graph.show(color=color, fig_size=(10, 10), node_size=15, strength=0.12)
 
 def time_range(sample,start,end):
     target_vals = [1 if metadata.loc[_,"HOST_SUBJECT_ID"]=="2202:Donor%s" % sample and metadata.loc[_,"COLLECTION_DAY"] in list(range(start,end+1)) else 0 for _ in X.index]
     color = Color(target=target_vals, dtype="numerical", target_by="sample")
-    show(data=X, graph=graph, color=color, fig_size=(10, 10), node_size=15, mode='spring', strength=0.12)
+    graph.show(color=color, fig_size=(10, 10), node_size=15,  strength=0.12)
     title("Subject %s at %s to %s" % (sample,start,end))
 
 # Travel period

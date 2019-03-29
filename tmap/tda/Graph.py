@@ -42,6 +42,9 @@ class Graph(nx.Graph):
         description = '\n'.join([_.strip(' ') for _ in description.split('\n')])
         return description
 
+    def __repr__(self):
+        return ''
+
     # accessory function
     ## check or is or confirm
     def check_empty(self):
@@ -95,9 +98,9 @@ class Graph(nx.Graph):
         self.check_empty()
         return len(self.remaining_samples) / self.rawX.shape[0]
 
+
     def samples_neighbors(self, sample_name, nr_threshold=0.5):
         """
-
         provide single, if dropped samples, will print error message.
         provide multiple samples, if one of them iss dropped, it won't print error message. Please be careful by yourself.
         :param sample_name: name or index of samples, could be multiple or single
@@ -141,7 +144,6 @@ class Graph(nx.Graph):
             dropped_sample_ids = set(np.arange(self.rawX.shape[0])).difference(set(self.remaining_samples))
             dropped_sample_names = [self.sid2sname(int(sid)) for sid in dropped_sample_ids]
             return dropped_sample_names
-
         else:
             print('No samples remained because of invalid graph construction or no samples clustering.')
 
@@ -200,6 +202,7 @@ class Graph(nx.Graph):
                                                      columns=node_data.columns)
         # neighborhood_scores = neighborhood_scores.reindex(node_data.index)
         return neighborhood_scores
+
 
     ## convertor
     def sid2sname(self, sid):

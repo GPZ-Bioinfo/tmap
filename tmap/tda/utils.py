@@ -283,7 +283,7 @@ def c_node_text(nodes, sample_names, target_v_raw):
     # values output from color.target. It need to apply mean function for a samples-length color.target.
     node_text = [str(n) +
                  # node id
-                 "<Br>vals:%s<Br>" % '{:.6f}'.format(v) +
+                 "<Br>vals:%s<Br>" % '{}'.format(v) +
                  # node values output from color.target.
                  '<Br>'.join(list(sample_names[nodes[n]['sample']][:8]) + ['......']
                              if len(sample_names[nodes[n]['sample']]) >= 8  # too long will make the node doesn't hover anythings.

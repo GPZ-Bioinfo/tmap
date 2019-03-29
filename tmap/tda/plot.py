@@ -200,7 +200,9 @@ class Color(object):
                 # target_in_node could be str or int...
                 most_num = stats.mode(target_in_node)[0][0][0]
                 if self.label_encoder is not None:
-                    most_str = self.label_encoder.inverse_transform(most_num)
+                    num2str = dict(zip(self.target[:,0],
+                                       self.label_encoder.inverse_transform(self.target.ravel())))
+                    most_str = num2str[most_num]
                 else:
                     most_str = most_num
                 node_colors.append(cat2color.get(most_str, 'blue'))
@@ -284,19 +286,18 @@ def show(graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2, mode=
         if color.dtype == "categorical":
             fig = plt.figure(figsize=fig_size)
             ax = fig.add_subplot(1, 1, 1)
-            if color.label_encoder:
-                encoded_cat = color.label_encoder.transform(color.labels.ravel())
-                # if color.label_encoder exist, color.labels must be some kinds of string list which is need to encoded.
-            else:
-                encoded_cat = color.labels.ravel()
-                # if not, it should be used directly as the node_target_values.
-            label_color = [legend_lookup.get(e_cat, None) for e_cat in encoded_cat]
-            get_label_color_dict = dict(zip(encoded_cat, label_color))
+            all_cats = legend_lookup.keys()
+            label_color = [legend_lookup.get(e_cat,
+                                             None) for e_cat in all_cats]
+            get_label_color_dict = dict(zip(all_cats,
+                                            label_color))
 
             # add categorical legend
-            for label in sorted(set(encoded_cat)):
+            for label in sorted(set(all_cats)):
                 if label_color is not None:
-                    ax.plot([], [], 'o', color=get_label_color_dict[label], label=label, markersize=10)
+                    ax.plot([], [], 'o',
+                            color=get_label_color_dict[label], label=label, markersize=10)
+
             legend = ax.legend(numpoints=1, loc="upper right")
             legend.get_frame().set_facecolor('#bebebe')
 
@@ -420,13 +421,16 @@ def vis_progressX(graph, simple=False, mode='file', color=None, _color_SAFE=None
 
     if color is not None:
         color_map, target2colors = color.get_colors(graph.nodes)
-        target_v = mms_color.fit_transform(target2colors[0]).ravel()
+        if types.is_numeric_dtype(target2colors[0]):
+            target_v = mms_color.fit_transform(target2colors[0]).ravel()
+        else:
+            target_v = []
         target_v_raw = target2colors[0].ravel()
         target_colors = target2colors[1]
 
         sample_colors, cat2color = color.get_sample_colors()
         if color.dtype == 'categorical':
-            legend_names = color.labels.astype(str)
+            legend_names = target2colors[0][:,0]
 
     # For calculating the dynamic process. It need to duplicate the samples first.
     # reconstructing the ori_MDS into the samples_pos
@@ -482,17 +486,6 @@ def vis_progressX(graph, simple=False, mode='file', color=None, _color_SAFE=None
     ### samples text
     samples_text = ['sample ID:%s' % _ for _ in sample_names]
 
-    # A dict which includes values of node to color
-    # For make continuous color legend
-    nv2c = dict(zip(target_v,
-                    target_colors))
-    colorscale = []
-    for _ in sorted(set(target_v)):
-        colorscale.append([_,
-                           nv2c[_]])
-    colorscale[-1][0] = 1  # the last value must be 1
-    colorscale[0][0] = 0  # the first value must be 0
-
     node_line = go.Scatter(
         # ordination line
         visible=False,
@@ -538,6 +531,17 @@ def vis_progressX(graph, simple=False, mode='file', color=None, _color_SAFE=None
         if color is not None:
             if color.dtype == 'numerical':
                 # with continuous legend bar
+                # A dict which includes values of node to color
+                # For make continuous color legend
+                nv2c = dict(zip(target_v,
+                                target_colors))
+                colorscale = []
+                for _ in sorted(set(target_v)):
+                    colorscale.append([_,
+                                       nv2c[_]])
+                colorscale[-1][0] = 1  # the last value must be 1
+                colorscale[0][0] = 0  # the first value must be 0
+
                 node_marker['marker']['color'] = target_v
                 node_marker['marker']['colorscale'] = colorscale
                 node_marker['marker']['showscale'] = True

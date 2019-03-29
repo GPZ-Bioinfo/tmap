@@ -2,11 +2,6 @@
 import argparse
 import pickle
 import copy
-import time
-
-import pandas as pd
-from pandas.api.types import is_categorical_dtype
-
 from tmap.api.general import *
 from tmap.netx.SAFE import SAFE_batch, get_SAFE_summary
 from tmap.tda.utils import read_graph
