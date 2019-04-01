@@ -10,7 +10,7 @@ from tmap.tda import mapper, Filter
 from tmap.tda.cover import Cover
 from tmap.tda.plot import Color
 
-assert sklearn.__version__ == "0.20.1"
+# assert sklearn.__version__ == "0.20.1"
 ############################################################
 # prepare graph
 X, y = datasets.make_circles(n_samples=5000, noise=0.05, factor=0.3, random_state=100)

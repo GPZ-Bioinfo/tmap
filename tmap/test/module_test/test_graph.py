@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 import sklearn
-assert sklearn.__version__ == "0.20.1"
+# assert sklearn.__version__ == "0.20.1"
 ############################################################
 # prepare graph
 X, y = datasets.make_circles(n_samples=5000, noise=0.05, factor=0.3, random_state=100)

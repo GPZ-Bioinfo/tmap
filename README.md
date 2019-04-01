@@ -10,22 +10,18 @@ Topological data analysis (TDA) provides a promising technique for analyzing lar
 
 To install tmap, run:
 ```bash
-git clone https://github.com/GPZ-Bioinfo/tmap.git
-cd tmap
-python setup.py install
+    # (recommend)
+    git clone https://github.com/GPZ-Bioinfo/tmap.git
+    cd tmap
+    python setup.py install
+    # For some dependency problems. please install following packages.
+    pip install scikit-bio
+    R -e "install.packages('vegan',repo='http://cran.rstudio.com/')"
 ```
 
 or you could also use pip now:
 ```bash
 pip install tmap
-```
-
-
-After install the tmap, for avoid other dependency problems. Please install ``scikit-bio`` and ``vegan`` in R.
-run:
-```
-pip install scikit-bio
-R -e "install.packages('vegan',repo='http://cran.rstudio.com/')"
 ```
 
 If you encounter any error like `Import error: tkinter`, you need to run `sudo apt install python-tk` or `sudo apt install python3-tk`.

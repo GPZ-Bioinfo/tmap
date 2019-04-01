@@ -35,16 +35,18 @@ graph = tm.map(data=X, cover=cover, clusterer=clusterer)
 
 safe_scores = SAFE_batch(graph, metadata, n_iter=50, _mode='both')
 enriched_scores, declined_scores = safe_scores['enrich'],safe_scores['decline']
-assert enriched_scores.shape == (952, 174)
-assert declined_scores.shape == (952, 174)
+num_n = len(graph.nodes)
+num_f = metadata.shape[1]
+assert enriched_scores.shape == (num_n, num_f)
+assert declined_scores.shape == (num_n, num_f)
 
 enriched_scores = SAFE_batch(graph, metadata, n_iter=50, _mode='enrich')
-assert enriched_scores.shape == (952, 174)
+assert enriched_scores.shape == (num_n, num_f)
 
 safe_scores = SAFE_batch(graph, metadata, n_iter=50, shuffle_by='sample', _mode='both')
 enriched_scores, declined_scores = safe_scores['enrich'],safe_scores['decline']
-assert enriched_scores.shape == (952, 174)
-assert declined_scores.shape == (952, 174)
+assert enriched_scores.shape == (num_n, num_f)
+assert declined_scores.shape == (num_n, num_f)
 
 from tmap.netx.SAFE import get_significant_nodes
 
