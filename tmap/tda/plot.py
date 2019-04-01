@@ -245,7 +245,7 @@ class Color(object):
         return sample_colors, cat2color
 
 
-def show(graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2, mode='spring', strength=None,notshow=False):
+def show(graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2, mode='spring',notshow=False,**kwargs):
     """
     Network visualization of TDA mapper
 
@@ -343,11 +343,11 @@ def show(graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2, mode=
     if mode == 'spring':
         ori_pos = graph.data
         if ori_pos.shape[1] < 2:
-            pos = nx.spring_layout(graph, k=strength)
+            pos = nx.spring_layout(graph,**kwargs)
         else:
             ori_pos = graph.transform_sn(ori_pos[:, :2],type='s2n')
             ori_pos = {n:tuple(ori_pos.iloc[n,:2]) for n in graph.nodes}
-            pos = nx.spring_layout(graph, pos=ori_pos, k=strength)
+            pos = nx.spring_layout(graph, pos=ori_pos,**kwargs)
         # add legend
         nx.draw_networkx(graph,
                          ax=ax,
@@ -374,8 +374,8 @@ def show(graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2, mode=
         plt.show()
 
 
-def tm_plot(graph, projected_X, filename, mode='file', include_plotlyjs='cdn', color=None, _color_SAFE=None, min_size=10, max_size=40, **kwargs):
-    vis_progressX(graph, projected_X, simple=True, filename=filename, include_plotlyjs=include_plotlyjs, color=color, _color_SAFE=_color_SAFE, min_size=min_size, max_size=max_size,
+def tm_plot(graph, filename, mode='file', include_plotlyjs='cdn', color=None, _color_SAFE=None, min_size=10, max_size=40, **kwargs):
+    vis_progressX(graph, simple=True, filename=filename, include_plotlyjs=include_plotlyjs, color=color, _color_SAFE=_color_SAFE, min_size=min_size, max_size=max_size,
                   mode=mode, **kwargs)
 
 
@@ -421,11 +421,15 @@ def vis_progressX(graph, simple=False, mode='file', color=None, _color_SAFE=None
     target_v = [0 for _ in nodes]
     target_colors = ['blue' for _ in nodes]
     sample_colors = ['red' for _ in sample_names]
-    color_map = {}
     cat2color = defaultdict(lambda: 'blue')
     legend_names = []
 
-    if color is not None:
+    if color is None or type(color) == str:
+        color = 'red' if color is None else color
+        color_map = {node_id: color for node_id in graph.nodes}
+        target2colors = (np.zeros((len(graph.nodes), 1)),
+                         [color] * len(graph.nodes))
+    else:
         color_map, target2colors = color.get_colors(graph.nodes)
         if types.is_numeric_dtype(target2colors[0]):
             target_v = mms_color.fit_transform(target2colors[0]).ravel()
@@ -534,7 +538,7 @@ def vis_progressX(graph, simple=False, mode='file', color=None, _color_SAFE=None
         node_marker['visible'] = True
         fig.append_trace(node_line, 1, 1)
 
-        if color is not None:
+        if color is not None and type(color) != str:
             if color.dtype == 'numerical':
                 # with continuous legend bar
                 # A dict which includes values of node to color
@@ -548,8 +552,12 @@ def vis_progressX(graph, simple=False, mode='file', color=None, _color_SAFE=None
                 colorscale[-1][0] = 1  # the last value must be 1
                 colorscale[0][0] = 0  # the first value must be 0
 
-                node_marker['marker']['color'] = target_v
+                node_marker['marker']['color'] = target2colors[0].ravel()
+                # it is not necessary to use target_v, it could use original data target2colors.
+                # Or it will display normalized values which will confuse reader.
                 node_marker['marker']['colorscale'] = colorscale
+                node_marker['marker']['cmin'] = target2colors[0].min()
+                node_marker['marker']['cmax'] = target2colors[0].max()
                 node_marker['marker']['showscale'] = True
                 fig.append_trace(node_marker, 1, 1)
             else:  # if color.dtype == 'categorical'
@@ -566,10 +574,13 @@ def vis_progressX(graph, simple=False, mode='file', color=None, _color_SAFE=None
                         marker=dict(color=cat2color[cat],
                                     size=scaled_size[legend_names == cat, 0],
                                     opacity=1),
-                        name=cat,
+                        name=str(cat),
                         showlegend=True,
                         mode="markers")
                     fig.append_trace(node_marker, 1, 1)
+        elif type(color) == str:
+            node_marker['marker']['color'] = color
+            fig.append_trace(node_marker, 1, 1)
         else:
             fig.append_trace(node_marker, 1, 1)
         fig.layout.hovermode = "closest"

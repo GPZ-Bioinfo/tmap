@@ -65,7 +65,7 @@ class Mapper(object):
             self.projected_data = data
 
         if self.verbose >= 1:
-            print("Finish filtering of points cloud data.")
+            print("Filtering has been completed.")
         return self.projected_data
 
     def map(self, data, cover, clusterer=cluster.DBSCAN(eps=0.5, min_samples=1)):

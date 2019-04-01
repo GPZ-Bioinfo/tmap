@@ -63,6 +63,8 @@ def unify_data(data):
         return pd.DataFrame(data)
     elif type(data) == dict:
         return pd.DataFrame.from_dict(data, orient='index')
+    elif data is None:
+        return
     else:
         print('Unkown data type. %s' % str(type(data)))
         return data

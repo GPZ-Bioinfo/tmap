@@ -188,7 +188,7 @@ def get_significant_nodes(graph,
     get significantly enriched/declined nodes (>= threshold)
     Difference between centroides and nodes:
         1. centroides mean the node itself
-        2. neighbor_nodes mean the neighbor nodes during SAFE calculation
+        2. neighbor_nodes mean the neighbor nodes during SAFE calculation (For advanced usage)
     :param tmap.tda.Graph.Graph graph:
     :param safe_scores:
     :param nr_threshold:
@@ -222,19 +222,6 @@ def get_significant_nodes(graph,
         return significant_centroids, significant_neighbor_nodes
     else:
         return significant_centroids
-
-
-def get_enriched_samples(enriched_nodes, nodes):
-    """
-    get significantly enriched samples (samples in enriched nodes)
-    there are overlapped samples between nodes, and should be deduplicated
-    :param enriched_nodes:
-    :param nodes:
-    :return:
-    """
-    return {feature: list(set([sample_id for node_id in node_ids
-                               for sample_id in nodes[node_id]]))
-            for feature, node_ids in enriched_nodes.items()}
 
 
 def get_SAFE_summary(graph, metadata, safe_scores, n_iter=None, p_value=0.01, nr_threshold=0.5, _output_details=False):

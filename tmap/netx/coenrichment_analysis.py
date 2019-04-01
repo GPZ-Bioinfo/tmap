@@ -4,6 +4,7 @@ import scipy.stats as scs
 from tqdm import tqdm
 
 from tmap.netx.SAFE import get_significant_nodes
+from statsmodels.sandbox.stats.multicomp import multipletests
 
 #
 # def get_component_nodes(graph, enriched_nodes):
@@ -317,7 +318,7 @@ def pairwise_coenrichment(graph, safe_scores, n_iter=5000, p_value=0.05, _pre_ca
     """
 
     dist_matrix = pd.DataFrame(data=np.nan,
-                               index=safe_scores.column,
+                               index=safe_scores.columns,
                                columns=safe_scores.columns)
     if verbose:
         print('building network...')
@@ -337,7 +338,9 @@ def pairwise_coenrichment(graph, safe_scores, n_iter=5000, p_value=0.05, _pre_ca
     for fea in iter_obj:
         _global, _meta = coenrichment_for_nodes(graph,
                                                 enriched_centroid[fea],
-                                                fea, enriched_centroid,
+                                                fea,
+                                                enriched_centroid,
+                                                safe_scores=safe_scores,
                                                 mode='global',
                                                 _filter=False)
         # _filter to fetch raw fisher-exact test result without any cut-off values.
@@ -350,4 +353,10 @@ def pairwise_coenrichment(graph, safe_scores, n_iter=5000, p_value=0.05, _pre_ca
                 else:
                     dist_matrix.loc[fea, o_f] = 1
         dist_matrix.loc[fea, fea] = 0
-    return dist_matrix
+
+    # correct for multiple testing
+    corrected_dist_matrix = pd.DataFrame(multipletests(dist_matrix.values.reshape(-1,),
+                                                  method='fdr_bh')[1].reshape(dist_matrix.shape),
+                                index=dist_matrix.index,
+                                columns=dist_matrix.columns)
+    return corrected_dist_matrix
