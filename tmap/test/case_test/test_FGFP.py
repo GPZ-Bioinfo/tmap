@@ -1,4 +1,6 @@
 from __future__ import print_function
+
+from scipy.spatial.distance import squareform, pdist
 from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import MinMaxScaler
 
@@ -9,11 +11,11 @@ from tmap.tda.metric import Metric
 from tmap.tda.plot import Color
 from tmap.tda.utils import optimize_dbscan_eps
 from tmap.test import load_data
-from scipy.spatial.distance import squareform,pdist
+
 # load taxa abundance data, sample metadata and precomputed distance matrix
 X = load_data.FGFP_genus_profile()
 metadata = load_data.FGFP_metadata_ready()
-dm = squareform(pdist(X,metric='braycurtis'))
+dm = squareform(pdist(X, metric='braycurtis'))
 
 # TDA Step1. initiate a Mapper
 tm = mapper.Mapper(verbose=1)
@@ -36,11 +38,8 @@ print(graph.info())
 # target_feature = 'Prevotella'
 target_feature = 'Bacteroides'
 n_iter = 1000
-enriched_scores = SAFE_batch(graph,
-                         metadata=X,
-                         n_iter=n_iter,
-                         _mode = 'enrich')
-target_safe_score = enriched_scores.loc[:,target_feature]
+enriched_scores = SAFE_batch(graph, metadata=X, n_iter=n_iter, _mode='enrich')
+target_safe_score = enriched_scores.loc[:, target_feature]
 
 ## Step 7. Visualization
 

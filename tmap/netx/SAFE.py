@@ -79,7 +79,7 @@ def _SAFE(graph, data, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffl
     neighborhood_scores = graph.neighborhood_score(node_data=node_data,
                                                    neighborhoods=neighborhoods,
                                                    mode=agg_mode)
-
+    _2 = neighborhood_scores.values
     if verbose == 0:
         iter_obj = range(n_iter)
     else:
@@ -93,9 +93,9 @@ def _SAFE(graph, data, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffl
         # use independent function to perform permutation.
         p_data = _permutation(data, graph=graph, shuffle_by=shuffle_by)  # it should provide the raw metadata instead of transformed data.
         p_neighborhood_scores = graph.neighborhood_score(node_data=p_data, neighborhoods=neighborhoods, mode=agg_mode)
-
-        neighborhood_enrichments[p_neighborhood_scores >= neighborhood_scores] += 1
-        neighborhood_decline[p_neighborhood_scores <= neighborhood_scores] += 1
+        _1 = p_neighborhood_scores.values
+        neighborhood_enrichments[_1 >= _2] += 1
+        neighborhood_decline[_1 <= _2] += 1
 
     neighborhood_enrichments = pd.DataFrame(neighborhood_enrichments,
                                             index=list(graph.nodes),
