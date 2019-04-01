@@ -16,7 +16,7 @@ from scipy import stats
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 
 from tmap.netx.SAFE import get_significant_nodes
-from tmap.tda.utils import c_node_text, write_figure
+from tmap.tda.utils import c_node_text,write_figure
 
 
 class Color(object):
@@ -171,6 +171,8 @@ class Color(object):
         :return: nodes colors with keys, and the color map of the target values
         :rtype: tuple (first is a dict node_ID:node_color, second is a tuple (node_ID_index,node_color))
         """
+        if self.target.shape[0] != len(nodes) and self.target_by == 'node':
+            print("Warning!!! target you provided may not the nodes associated values. it won't raise fatal error but may raise silent error.")
         # todo: accept a customzied color map [via the 'cmap' parameter]
         node_keys = nodes
         cat2color = {}
@@ -243,7 +245,7 @@ class Color(object):
         return sample_colors, cat2color
 
 
-def show(graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2, mode='spring', strength=None):
+def show(graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2, mode='spring', strength=None,notshow=False):
     """
     Network visualization of TDA mapper
 
@@ -343,7 +345,8 @@ def show(graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2, mode=
         if ori_pos.shape[1] < 2:
             pos = nx.spring_layout(graph, k=strength)
         else:
-            ori_pos = {n: ori_pos[n, :2] for n in graph.nodes}
+            ori_pos = graph.transform_sn(ori_pos[:, :2],type='s2n')
+            ori_pos = {n:tuple(ori_pos.iloc[n,:2]) for n in graph.nodes}
             pos = nx.spring_layout(graph, pos=ori_pos, k=strength)
         # add legend
         nx.draw_networkx(graph,
@@ -365,7 +368,10 @@ def show(graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2, mode=
                    c=colorlist, s=sizes, zorder=2)
 
     plt.axis("off")
-    plt.show()
+    if notshow:
+        return plt
+    else:
+        plt.show()
 
 
 def tm_plot(graph, projected_X, filename, mode='file', include_plotlyjs='cdn', color=None, _color_SAFE=None, min_size=10, max_size=40, **kwargs):

@@ -1,4 +1,4 @@
-import itertools
+import itertools,pickle
 
 import networkx as nx
 import numpy as np
@@ -29,21 +29,28 @@ class Graph(nx.Graph):
             """
             Graph {name}
             Contains {num_n} nodes and {num_s} samples
-            During constructing graph, {loss_p:2f} percent of samples is lost
+            During constructing graph, {loss_n} ({loss_p}%) samples lost
             
             Used params: 
             {str_p}
             """.format(name=self.name,
                        num_n=len(self.nodes),
                        num_s=len(self.remaining_samples),
-                       loss_p=self.cover_ratio(),
+                       loss_n=self.rawX.shape[0] - len(self.remaining_samples),
+                       loss_p=round(self.cover_ratio(), 4) * 100,
                        str_p=self.params
                        )
         description = '\n'.join([_.strip(' ') for _ in description.split('\n')])
         return description
 
     def __repr__(self):
-        return ''
+        description = """
+            Graph {name}
+            Contains {num_n} nodes and {num_s} samples
+            """.format(name=self.name,
+                       num_n=len(self.nodes),
+                       num_s=len(self.remaining_samples))
+        return description
 
     # accessory function
     ## check or is or confirm
@@ -98,7 +105,6 @@ class Graph(nx.Graph):
         self.check_empty()
         return len(self.remaining_samples) / self.rawX.shape[0]
 
-
     def samples_neighbors(self, sample_name, nr_threshold=0.5):
         """
         provide single, if dropped samples, will print error message.
@@ -116,8 +122,7 @@ class Graph(nx.Graph):
         neighbor_sample_names = self.sid2sname(neighbor_samples)
         return neighbor_sample_names
 
-
-    def get_component_nodes(self,nodes):
+    def get_component_nodes(self, nodes):
         """
         Given a list of enriched nodes which comes from ``get_enriched_nodes``. Normally it the enriched_centroid instead of the others nodes around them.
         :param list enriched_nodes: list of nodes ID which is enriched with given feature and threshold.
@@ -126,7 +131,6 @@ class Graph(nx.Graph):
         g = nx.subgraph(self, nodes)
         comp_nodes = [nodes for nodes in nx.algorithms.components.connected_components(g)]
         return comp_nodes
-
 
     def get_shared_samples(self, node_u, node_v):
         """
@@ -148,16 +152,20 @@ class Graph(nx.Graph):
             print('No samples remained because of invalid graph construction or no samples clustering.')
 
     ## indirect attr (For SAFE calculation)
-    def get_neighborhoods(self, nodeid=None, nr_threshold=0.5):
+    def get_neighborhoods(self, nodeid=None, nr_threshold=0.5, nr_dist=None):
         """
         generate neighborhoods from the graph for all nodes
         :param nr_threshold: Float in range of [0,100]. The threshold is used to cut path distance with percentiles. nr means neighbour
         :return: return a dict with keys of nodes, values is a list of another node ids.
         """
         all_length = [dist for k1, v1 in self.all_length.items() for dist in v1.values()]
-        # remove self-distance (that is 0)
         all_length = [_ for _ in all_length if _ > 0]
-        length_threshold = np.percentile(all_length, nr_threshold)
+        # remove self-distance (that is 0)
+        if nr_dist is None:
+            length_threshold = np.percentile(all_length, nr_threshold)
+        else:
+            length_threshold = nr_dist
+
         if nodeid is not None:
             if type(nodeid) == int:
                 nodeid = [nodeid]
@@ -202,7 +210,6 @@ class Graph(nx.Graph):
                                                      columns=node_data.columns)
         # neighborhood_scores = neighborhood_scores.reindex(node_data.index)
         return neighborhood_scores
-
 
     ## convertor
     def sid2sname(self, sid):
@@ -288,6 +295,8 @@ class Graph(nx.Graph):
 
     def transform_sn(self, data, type='s2n'):
         """
+        s2n mean sample2node, normally, it just transform the data according to the graph.nodes.
+        n2s mean node2sample. it actually can't achieve, so it just a process duplicating nodes into samples shape.
         :param data:
         :param type: s2n mean 'sample to node', n2s mean 'node to sample'
         :return:
@@ -374,21 +383,24 @@ class Graph(nx.Graph):
 
     # IO part
     def read(self, filename):
-        pass
+        g = pickle.load(open(filename,'rb'))
+        return g
 
     def write(self, filename):
-        pass
+        pickle.dump(self, open(filename, 'wb'))
 
     # visualization
     def show(self, **kwargs):
-        show(self, mode=None, **kwargs)
+        if 'mode' not in kwargs:
+            show(self, mode=None, **kwargs)
+        else:
+            show(self, **kwargs)
 
     def show_samples(self, samples, **kwargs):
         nids = self.sample2nodes(samples)
         target = [1 if nid in nids else 0 for nid in self.nodes]
         color = Color(target, target_by='node', dtype='categorical')
         show(self, mode=None, color=color, **kwargs)
-
 
     # attr
     @property

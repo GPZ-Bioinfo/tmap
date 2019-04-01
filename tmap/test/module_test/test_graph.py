@@ -115,3 +115,4 @@ assert graph.is_samples_shared('t4945') == True  # case 3: shared samples
 assert graph.is_samples_dropped('t4389') == True
 assert graph.is_samples_dropped('t1') == False
 
+assert graph.data.shape[0] != len(graph.nodes)

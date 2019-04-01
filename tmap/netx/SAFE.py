@@ -109,7 +109,7 @@ def _SAFE(graph, data, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffl
                                     n_iter=n_iter)
 
     if _mode == 'both':
-        return safe_scores_enrich, safe_scores_decline
+        return {'enrich': safe_scores_enrich, 'decline': safe_scores_decline}
     elif _mode == 'enrich':
         return safe_scores_enrich
     elif _mode == 'decline':
@@ -162,11 +162,11 @@ def SAFE_batch(graph, metadata, n_iter=1000, nr_threshold=0.5, neighborhoods=Non
 
     if _mode == 'both':
         params = _params.copy()
-        params['data'] = all_safe_scores[0]
+        params['data'] = all_safe_scores['enrich']
         params['_mode'] = 'enrich'
         graph._add_safe(params)
         params = _params.copy()
-        params['data'] = all_safe_scores[1]
+        params['data'] = all_safe_scores['decline']
         params['_mode'] = 'decline'
         graph._add_safe(params)
     else:
@@ -210,9 +210,9 @@ def get_significant_nodes(graph,
 
     filter_dict = safe_scores.where(safe_scores >= SAFE_pvalue).to_dict()
 
-    significant_centroids = {k: [v for v in vlist
-                                 if not pd.isnull(v)] for k,
-                                                          vlist in filter_dict.items()}
+    significant_centroids = {k: [v for v in vdict
+                                 if not pd.isnull(vdict[v])] for k,
+                                                                 vdict in filter_dict.items()}
 
     significant_neighbor_nodes = {f: list(set([n for n in nodes
                                                for n in neighborhoods[n]]))
@@ -284,10 +284,10 @@ def get_SAFE_summary(graph, metadata, safe_scores, n_iter=None, p_value=0.01, nr
 
     # calculate enriched ratios ('enriched abundance' / 'total abundance')
     feature_total = metadata.sum(axis=0)
-
+    remained_features = [feature for feature in feature_names if safe_significant_samples[feature]]
     enriched_abundance_ratio = {feature: np.sum(metadata.loc[safe_significant_samples[feature],
-                                                             feature]) / feature_total[feature]
-                                for feature in feature_names}
+                                                             feature]) / feature_total[feature] if feature in remained_features
+    else 0 for feature in feature_names}
 
     # helper for safe division for integer and divide_by zero
     def _safe_div(x, y):

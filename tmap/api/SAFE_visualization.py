@@ -4,7 +4,7 @@ import pickle
 from collections import Counter
 
 import plotly
-import plotly.io as pio
+
 from plotly import graph_objs as go
 from plotly import tools
 from sklearn.decomposition import PCA
@@ -12,13 +12,9 @@ from sklearn.preprocessing import MinMaxScaler
 
 from tmap.api.general import *
 from tmap.tda.plot import vis_progressX, Color
+from tmap.tda.Graph import Graph
+from tmap.tda.utils import output_fig
 
-
-def output_graph(fig,output,mode):
-    if mode == 'html' or output.endswith('html'):
-        plotly.offline.plot(fig, filename=output, auto_open=False)
-    else:
-        pio.write_image(fig, output, format=mode)
 
 def draw_PCOA(rawdatas, summary_datas, output, mode='html', width=1500, height=1000, sort_col='SAFE enriched score'):
     """
@@ -74,19 +70,23 @@ def draw_PCOA(rawdatas, summary_datas, output, mode='html', width=1500, height=1
                            font=dict(size=15),
                            hovermode='closest', ))
 
-    output_graph(fig,output,mode)
+    output_fig(fig,output,mode)
     logger("Ordination graph has been output to", output, verbose=1)
 
 
 def draw_stratification(graph, SAFE_dict, cols, output, mode='html', n_iter=1000, p_val=0.05, width=1000, height=1000, allnodes=False):
     # Enterotyping-like stratification map based on SAFE score
-    node_pos = graph["node_positions"]
-    sizes = graph["node_sizes"][:, 0]
-    transformed_sizes = MinMaxScaler(feature_range=(10, 40)).fit_transform(sizes.reshape(-1, 1)).ravel()
-    projected_X = graph.get('accessory_obj', dict()).get('raw_X', '')
+
+    node_pos = graph.nodePos
+    sizes = graph.size
+    nodes = graph.nodes
+    sizes = np.array([sizes[_] for _ in range(len(nodes))]).reshape(-1, 1)
+
+    transformed_sizes = MinMaxScaler(feature_range=(10, 40)).fit_transform(sizes).ravel()
+    projected_X = graph.data
     xs = []
     ys = []
-    for edge in graph["edges"]:
+    for edge in graph.edges:
         xs += [node_pos[edge[0], 0],
                node_pos[edge[1], 0],
                None]
@@ -122,7 +122,6 @@ def draw_stratification(graph, SAFE_dict, cols, output, mode='html', n_iter=1000
             if allnodes:
                 color = Color(SAFE_dict[fea], target_by='node', dtype='numerical')
                 subfig = vis_progressX(graph,
-                                       projected_X=projected_X,
                                        simple=True,
                                        mode='obj',
                                        color=color
@@ -130,8 +129,8 @@ def draw_stratification(graph, SAFE_dict, cols, output, mode='html', n_iter=1000
                 subfig.data[1]['name'] = fea
                 fig.append_trace(subfig.data[1], 1, 1)
             else:
-                get_nodes_bool = safe_score_df.loc[:, fea] >= SAFE_pvalue
-                if not all(get_nodes_bool):
+                get_nodes_bool = (safe_score_df.loc[:, fea] >= SAFE_pvalue).all()
+                if not get_nodes_bool:
                     # if all False....
                     logger("fea: %s get all False bool indicated there are not enriched nodes showed at the graph" % fea, verbose=1)
                 else:
@@ -142,7 +141,7 @@ def draw_stratification(graph, SAFE_dict, cols, output, mode='html', n_iter=1000
                         y=node_pos[get_nodes_bool, 1],
                         hoverinfo="text",
                         marker=dict(  # color=node_colors,
-                            size=[5 + sizes[_] for _ in np.arange(node_pos.shape[0])[get_nodes_bool]],
+                            size=[sizes[_,0] for _ in np.arange(node_pos.shape[0])[get_nodes_bool]],
                             opacity=0.9),
                         showlegend=True,
                         name=str(fea) + ' (%s)' % str(t.get(fea, 0)),
@@ -158,7 +157,7 @@ def draw_stratification(graph, SAFE_dict, cols, output, mode='html', n_iter=1000
                 y=node_pos[np.array(tmp) == fea, 1],
                 hoverinfo="text",
                 marker=dict(  # color=node_colors,
-                    size=[5 + transformed_sizes[_] for _ in np.arange(node_pos.shape[0])[np.array(tmp) == fea]],
+                    size=[transformed_sizes[_,0] for _ in np.arange(node_pos.shape[0])[np.array(tmp) == fea]],
                     opacity=0.9),
                 showlegend=True,
                 name=str(fea) + ' (%s)' % str(t[fea]),
@@ -169,7 +168,7 @@ def draw_stratification(graph, SAFE_dict, cols, output, mode='html', n_iter=1000
     fig.layout.font.size = 15
     fig.layout.hovermode = 'closest'
 
-    output_graph(fig,output,mode)
+    output_fig(fig,output,mode)
     logger("Stratification graph has been output to", output, verbose=1)
 
 
@@ -230,7 +229,7 @@ def draw_ranking(data, cols_dict, output, mode='html', width=1600, height=1400, 
     fig.layout.width = width
     fig.layout.height = height
 
-    output_graph(fig,output,mode)
+    output_fig(fig,output,mode)
     logger("Ranking graph has been output to", output, verbose=1)
 
 
@@ -248,7 +247,7 @@ def main(args):
         dict_data = pickle.load(open(args.SAFE[0], 'rb'))
         safe_dict = dict_data['data']
         n_iter = dict_data['params']['n_iter']
-        graph = pickle.load(open(args.graph, 'rb'))
+        graph = Graph().read(args.graph)
         draw_stratification(graph=graph,
                             SAFE_dict=safe_dict,
                             cols=args.col,

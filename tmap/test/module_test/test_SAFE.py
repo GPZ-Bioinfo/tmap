@@ -33,14 +33,16 @@ graph = tm.map(data=X, cover=cover, clusterer=clusterer)
 # prepare graph
 ############################################################
 
-enriched_scores, declined_scores = SAFE_batch(graph, metadata, n_iter=50, _mode='both')
+safe_scores = SAFE_batch(graph, metadata, n_iter=50, _mode='both')
+enriched_scores, declined_scores = safe_scores['enrich'],safe_scores['decline']
 assert enriched_scores.shape == (952, 174)
 assert declined_scores.shape == (952, 174)
 
 enriched_scores = SAFE_batch(graph, metadata, n_iter=50, _mode='enrich')
 assert enriched_scores.shape == (952, 174)
 
-enriched_scores, declined_scores = SAFE_batch(graph, metadata, n_iter=50, shuffle_by='sample', _mode='both')
+safe_scores = SAFE_batch(graph, metadata, n_iter=50, shuffle_by='sample', _mode='both')
+enriched_scores, declined_scores = safe_scores['enrich'],safe_scores['decline']
 assert enriched_scores.shape == (952, 174)
 assert declined_scores.shape == (952, 174)
 

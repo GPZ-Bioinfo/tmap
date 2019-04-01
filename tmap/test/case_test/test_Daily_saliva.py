@@ -3,10 +3,9 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.cluster import DBSCAN
 from tmap.tda import mapper, Filter
 from tmap.tda.cover import Cover
-from tmap.tda.plot import show, Color
+from tmap.tda.plot import Color
 from tmap.tda.metric import Metric
 from tmap.tda.utils import optimize_dbscan_eps
-from tmap.netx.SAFE import SAFE_batch, get_SAFE_summary
 from tmap.test import load_data
 from scipy.spatial.distance import pdist,squareform
 
@@ -38,7 +37,7 @@ color = Color(target=metadata.loc[:, target_feature], dtype="numerical", target_
 graph.show(color=color,
            fig_size=(10, 10),
            node_size=15,
-           strength=0.03)
+           strength=0.03,notshow=True)
 
 
 target_feature = 'Bacteroides'
@@ -46,5 +45,5 @@ color = Color(target=X.loc[:, target_feature], dtype="numerical", target_by="sam
 graph.show(color=color,
            fig_size=(10, 10),
            node_size=15,
-           strength=0.03)
+           strength=0.03,notshow=True)
 

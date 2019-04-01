@@ -76,10 +76,11 @@ assert set(color5.get_colors(graph.nodes, cmap={1: 'blue',
 # %matplotlib
 from tmap.netx.SAFE import SAFE_batch
 
-enriched_scores, declined_scores = SAFE_batch(graph,
-                                              metadata,
-                                              n_iter=500,
-                                              _mode='both')
+safe_scores = SAFE_batch(graph,
+                         metadata,
+                         n_iter=500,
+                         _mode='both')
+enriched_scores, declined_scores = safe_scores['enrich'], safe_scores['decline']
 color = Color(enriched_scores.loc[:,
               'circle'], target_by='node', dtype='numerical')
 color6 = Color(metadata.loc[:, 'circle'], target_by='sample', dtype='numerical')
@@ -91,7 +92,7 @@ show(graph, mode=None)
 show(graph, color=color6)
 show(graph, color=color7)
 graph.show_samples(['t1', 't688', 't3000'])
-graph.show()
+graph.show(notshow=True)
 from tmap.tda.plot import vis_progressX
 
 vis_progressX(graph,

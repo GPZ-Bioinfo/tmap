@@ -8,7 +8,7 @@ from tmap.tda import mapper
 from tmap.tda.Filter import _filter_dict
 from tmap.tda.cover import Cover
 from tmap.tda.metric import Metric
-from tmap.tda.utils import optimize_dbscan_eps, dump_graph
+from tmap.tda.utils import optimize_dbscan_eps
 
 pd.options.display.expand_frame_repr = False
 pd.options.display.max_rows = 1000
@@ -82,7 +82,7 @@ def main(input, output, dis=None, _eu_dm=None, metric="braycurtis", eps=95, over
         logger("Empty graph generated... ERROR occur", verbose=1)
     else:
         # todo : implement a jsonable ndarray.
-        dump_graph(graph, output, method=method)
+        graph.write(output)
         logger("Graph has been generated and stored into ", output,verbose=1)
 
 

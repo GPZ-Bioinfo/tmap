@@ -4,8 +4,7 @@ import pickle
 import copy
 from tmap.api.general import *
 from tmap.netx.SAFE import SAFE_batch, get_SAFE_summary
-from tmap.tda.utils import read_graph
-
+from tmap.tda.Graph import Graph
 _pickle_safe_format = {'data': '',
                        'params': {"n_iter": 0,
                                   "nr_threshold": 0}}
@@ -72,7 +71,7 @@ def main(args):
     method = args.method
 
     logger("Loading precomputed graph from \"{}\" ".format(graph), verbose=1)
-    graph = read_graph(graph, method=method)
+    graph = Graph().read(graph)
     logger("Start performing SAFE analysis", verbose=1)
     result = generate_SAFE_score(graph, metadata, n_iter=n_iter,
                                  pval=pval, nr_threshold=nr_threshold,

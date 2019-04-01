@@ -1,18 +1,15 @@
 #! /usr/bin/python3
 import argparse
-import pickle
 import warnings
 
 from tmap.api.general import *
 from tmap.tda.plot import vis_progressX, Color
-
+from tmap.tda.Graph import Graph
 warnings.filterwarnings('ignore')
 
 
 def main(args):
-    graph = pickle.load(open(args.graph, 'rb'))
-    accessory_objs = graph['accessory_obj']
-    projected_X = accessory_objs['raw_X']
+    graph = Graph().read(args.graph)
     color = None
     if args.metadata:
         metadata = data_parser(args.metadata)
@@ -25,7 +22,6 @@ def main(args):
             color = Color(col_data, dtype=args.dtype, target_by='sample')
 
     vis_progressX(graph,
-                  projected_X=projected_X,
                   mode='file',
                   simple=False if args.complex else True,
                   color=color,
