@@ -8,10 +8,11 @@ from tmap.tda import mapper
 from tmap.tda.Filter import _filter_dict
 from tmap.tda.cover import Cover
 from tmap.tda.metric import Metric
-from tmap.tda.utils import optimize_dbscan_eps, cover_ratio, dump_graph
+from tmap.tda.utils import optimize_dbscan_eps
 
 pd.options.display.expand_frame_repr = False
 pd.options.display.max_rows = 1000
+
 import time
 import argparse
 import warnings
@@ -49,14 +50,8 @@ def generate_graph(input_data, dis=None, _eu_dm=None, eps_threshold=95, overlap=
     clusterer = DBSCAN(eps=eps, min_samples=min_samples)
     cover = Cover(projected_data=MinMaxScaler().fit_transform(projected_X), resolution=r, overlap=overlap)
     graph = tm.map(data=input_data, cover=cover, clusterer=clusterer)
-    logger('Graph covers %.2f percentage of samples.' % cover_ratio(graph, input_data), verbose=verbose)
+    logger(graph.info(), verbose=verbose)
     logger("graph generator take: ", time.time() - t1, verbose=verbose)
-
-    accessory_obj = {'raw_X': projected_X,
-                     'cover': cover,
-                     'clusterer': clusterer,
-                     'input_data': input_data}
-    graph['accessory_obj'] = accessory_obj
     return graph
 
 
@@ -87,7 +82,7 @@ def main(input, output, dis=None, _eu_dm=None, metric="braycurtis", eps=95, over
         logger("Empty graph generated... ERROR occur", verbose=1)
     else:
         # todo : implement a jsonable ndarray.
-        dump_graph(graph, output, method=method)
+        graph.write(output)
         logger("Graph has been generated and stored into ", output,verbose=1)
 
 

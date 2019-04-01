@@ -1,19 +1,24 @@
 # -*- coding: utf-8 -*-
-import numpy as np
-import pandas as pd
 import itertools
+
+import numpy as np
 from sklearn import cluster
 from tqdm import tqdm
+
+from tmap.tda.Graph import Graph
+
 
 class Mapper(object):
     """
     implement the TDA mapper framework for microbiome analysis
     """
+
     def __init__(self, verbose=1):
         #: if verbose greater than 1, it will output detail info.
         self.verbose = verbose
-
-        # self.lens = None
+        self.projected_data = None
+        self.filter_data = None
+        self.lens = None
         # self.clusterer = None
         # self.cover = None
         # self.graph = {}
@@ -35,12 +40,12 @@ class Mapper(object):
             raise Exception("Data must not be None.")
         if type(data) is not np.ndarray:
             data = np.array(data)
-
+        self.filter_data = data
+        self.lens = lens
         # "Metric and Filters for projection/filtering"
         # projection of original data points onto a low dimensional space
         # lens is a list of filters (tmap.tda.filter.Filters), can combine and use different filters
         # if lens is None, data is assumed to be projected data already
-        projected_data = None
         if len(lens) > 0:
             for _filter in lens:
                 if self.verbose >= 1:
@@ -50,18 +55,18 @@ class Mapper(object):
                     else:
                         print("...calculate Filter(which used to create cover) with default.")
 
-                if projected_data is None:
-                    projected_data = _filter.fit_transform(data)
+                if self.projected_data is None:
+                    self.projected_data = _filter.fit_transform(data)
                 else:
                     p = _filter.fit_transform(data)
-                    projected_data = np.concatenate([projected_data, p], axis=1)
+                    self.projected_data = np.concatenate([self.projected_data, p], axis=1)
         else:
             # lens is None, and the input "data" is assumed to be already filtered
-            projected_data = data
+            self.projected_data = data
 
         if self.verbose >= 1:
-            print("Finish filtering of points cloud data.")
-        return projected_data
+            print("Filtering has been completed.")
+        return self.projected_data
 
     def map(self, data, cover, clusterer=cluster.DBSCAN(eps=0.5, min_samples=1)):
         """
@@ -90,7 +95,7 @@ class Mapper(object):
         In future, structured class of graph will be implemented and taken as the result of ``Mapper``.
         """
         # nodes, edges and graph of the TDA graph
-        graph = {}
+        graph = Graph(data)
         nodes = {}
         raw_nodes = {}
 
@@ -155,7 +160,8 @@ class Mapper(object):
             print("...calculate projection coordinates of nodes.")
 
         node_keys = list(nodes.keys())
-        node_positions = np.zeros((len(nodes), cover.data.shape[1]))
+        node_positions = np.zeros((len(nodes),
+                                   cover.data.shape[1]))
         node_sizes = np.zeros((len(nodes), 1))
         for i, node_id in enumerate(node_keys):
             data_in_node = cover.data[nodes[node_id], :]
@@ -170,9 +176,9 @@ class Mapper(object):
         node_ids = nodes.keys()
 
         edges = [edge for edge in itertools.combinations(node_ids, 2) if np.any(nodes[edge[0]] & nodes[edge[1]])]
-        edges_df = pd.DataFrame(columns=['Source','End'],data=np.array(edges))
-        adj_matrix = pd.crosstab(edges_df.Source,edges_df.End)
-        adj_matrix = adj_matrix.reindex(index=node_ids, columns=node_ids).replace(0, np.nan)
+        # edges_df = pd.DataFrame(columns=['Source', 'End'], data=np.array(edges))
+        # adj_matrix = pd.crosstab(edges_df.Source, edges_df.End)
+        # adj_matrix = adj_matrix.reindex(index=node_ids, columns=node_ids).replace(0, np.nan)
         # set the NaN value for filtering edges with pandas stack function
         # adj_matrix = pd.DataFrame(data=np.nan, index=node_ids, columns=node_ids)
         # # todo: this edges making step to be improved? using some native numpy?
@@ -187,22 +193,22 @@ class Mapper(object):
             print("...create %s edges." % (len(edges)))
             print("Finish TDA mapping")
 
-        # transform the point mask into point ids in the nodes
-        nodes = dict([(node_id, data_idx[nodes[node_id]]) for node_id in nodes.keys()])
-        graph["nodes"] = nodes
-        graph["edges"] = edges
-        graph["adj_matrix"] = adj_matrix
         if "index" in dir(data):
-            graph["sample_names"] = list(data.index)
+            sample_names = np.array(data.index)
         else:
-            graph["sample_names"] = list(range(data.shape[0]))
-        # ordered "node_keys", mapped with "node_positions" and "node_size" (lists)
-        graph["node_keys"] = node_keys
-        graph["node_positions"] = node_positions
-        graph["node_sizes"] = node_sizes
-        graph['params'] = {'cluster':clusterer.get_params(),
-                           'cover':{'resolution':cover.resolution,
-                                    'overlap':cover.overlap},
-                           '_raw_nodes':raw_nodes}
-        return graph
+            sample_names = data_idx
+        # transform the point mask into point ids in the nodes
+        nodes = [(node_id, dict(sample=data_idx[nodes[node_id]],
+                                sample_names=sample_names[nodes[node_id]],
+                                size=len(sample_names[nodes[node_id]])
+                                )) for node_id in nodes.keys()]
 
+        graph._add_node(nodes)
+        graph._add_edge(edges)
+        graph._add_node_pos(node_positions)
+        graph._record_params({'clusterer': clusterer,
+                              'cover': cover,
+                              'lens': self.lens,
+                              'used_data': {'projected_data': self.projected_data,
+                                            'filter_data': self.filter_data}})
+        return graph

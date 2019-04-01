@@ -22,11 +22,11 @@ pip install tmap
 
 
 After install the tmap, for avoid other dependency problems. Please install ``scikit-bio`` and ``vegan`` in R.
-
-run::
-
-    pip install scikit-bio
-    R -e "install.packages('vegan',repo='http://cran.rstudio.com/')"
+run:
+```
+pip install scikit-bio
+R -e "install.packages('vegan',repo='http://cran.rstudio.com/')"
+```
 
 If you encounter any error like `Import error: tkinter`, you need to run `sudo apt install python-tk` or `sudo apt install python3-tk`.
 

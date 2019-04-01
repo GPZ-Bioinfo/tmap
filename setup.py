@@ -42,7 +42,7 @@ class CleanCommand(Clean):
 cmdclass = {'clean': CleanCommand}
 
 setup(name='tmap',
-      version='1.1.3',
+      version='1.2',
       description='A topological data analysis framework implementing the TDA Mapper algorithm for population-scale microbiome data analysis ',
       author='Haokui Zhou, Tianhua Liao',
       author_email='zhouhaokui@hotmail.com',
@@ -62,7 +62,7 @@ setup(name='tmap',
                         'tqdm',
                         'scikit-learn>=0.19.1',
                         'matplotlib>=2.2.2',
-                        'networkx>=2.1',
+                        'networkx==2.2',
                         'pandas>=0.23.0',
                         'scipy',
                         'matplotlib!=3.0.0rc2',

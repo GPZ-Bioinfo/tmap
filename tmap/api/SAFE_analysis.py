@@ -1,15 +1,11 @@
 #! /usr/bin/python3
 import argparse
-import pickle
 import copy
-import time
-
-import pandas as pd
-from pandas.api.types import is_categorical_dtype
+import pickle
 
 from tmap.api.general import *
 from tmap.netx.SAFE import SAFE_batch, get_SAFE_summary
-from tmap.tda.utils import read_graph
+from tmap.tda.Graph import Graph
 
 _pickle_safe_format = {'data': '',
                        'params': {"n_iter": 0,
@@ -39,12 +35,23 @@ def generate_SAFE_score(graph, metadata, n_iter=1000, pval=0.05, nr_threshold=0.
     _pickle_safe_format['params']["nr_threshold"] = nr_threshold
 
     if _mode == 'both':
-        enriched_SAFE, declined_SAFE = SAFE_batch(graph, meta_data=metadata, n_iter=n_iter,
-                                                  nr_threshold=nr_threshold, _cal_type=_cal_type, _mode=_mode, verbose=verbose)
-        enriched_SAFE_summary = get_SAFE_summary(graph=graph, meta_data=metadata, safe_scores=enriched_SAFE,
-                                                 n_iter_value=n_iter, p_value=pval)
-        declined_SAFE_summary = get_SAFE_summary(graph=graph, meta_data=metadata, safe_scores=declined_SAFE,
-                                                 n_iter_value=n_iter, p_value=pval)
+        safe_scores = SAFE_batch(graph,
+                                 metadata=metadata,
+                                 n_iter=n_iter,
+                                 nr_threshold=nr_threshold,
+                                 _mode=_mode,
+                                 verbose=verbose)
+        enriched_SAFE, declined_SAFE = safe_scores['enrich'], safe_scores['decline']
+        enriched_SAFE_summary = get_SAFE_summary(graph=graph,
+                                                 metadata=metadata,
+                                                 safe_scores=enriched_SAFE,
+                                                 n_iter=n_iter,
+                                                 p_value=pval)
+        declined_SAFE_summary = get_SAFE_summary(graph=graph,
+                                                 metadata=metadata,
+                                                 safe_scores=declined_SAFE,
+                                                 n_iter=n_iter,
+                                                 p_value=pval)
         _pickle_safe_format['data'] = enriched_SAFE
         collect_result['raw']['enrich'] = copy.deepcopy(_pickle_safe_format)
         _pickle_safe_format['data'] = declined_SAFE
@@ -52,10 +59,17 @@ def generate_SAFE_score(graph, metadata, n_iter=1000, pval=0.05, nr_threshold=0.
         collect_result['enrich'] = enriched_SAFE_summary.sort_values('SAFE enriched score', ascending=False)
         collect_result['decline'] = declined_SAFE_summary.sort_values('SAFE enriched score', ascending=False)
     else:
-        SAFE_data = SAFE_batch(graph, meta_data=metadata, n_iter=n_iter,
-                               nr_threshold=nr_threshold, _cal_type=_cal_type, _mode=_mode, verbose=verbose)
-        SAFE_summary = get_SAFE_summary(graph=graph, meta_data=metadata, safe_scores=SAFE_data,
-                                        n_iter_value=n_iter, p_value=pval)
+        SAFE_data = SAFE_batch(graph,
+                               metadata=metadata,
+                               n_iter=n_iter,
+                               nr_threshold=nr_threshold,
+                               _mode=_mode,
+                               verbose=verbose)
+        SAFE_summary = get_SAFE_summary(graph=graph,
+                                        metadata=metadata,
+                                        safe_scores=SAFE_data,
+                                        n_iter=n_iter,
+                                        p_value=pval)
         _pickle_safe_format['data'] = SAFE_data
         collect_result['raw']['enrich'] = copy.deepcopy(_pickle_safe_format)
         collect_result['raw']['decline'] = copy.deepcopy(_pickle_safe_format)
@@ -75,10 +89,9 @@ def main(args):
     nr_threshold = args.nr_threshold
     _mode = args.mode
     _cal_type = args.cal_type
-    method = args.method
 
     logger("Loading precomputed graph from \"{}\" ".format(graph), verbose=1)
-    graph = read_graph(graph, method=method)
+    graph = Graph().read(graph)
     logger("Start performing SAFE analysis", verbose=1)
     result = generate_SAFE_score(graph, metadata, n_iter=n_iter,
                                  pval=pval, nr_threshold=nr_threshold,
@@ -147,7 +160,7 @@ if __name__ == '__main__':
     n_iter = args.iter
     pval = args.pvalue
 
-    metadata, cols_dict = data_parser(metadata,ft='metadatas')
+    metadata, cols_dict = data_parser(metadata, ft='metadatas')
     process_output(output=prefix)
     args.metadata = metadata
     main(args)

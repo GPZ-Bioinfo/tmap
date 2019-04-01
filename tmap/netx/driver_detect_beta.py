@@ -2,6 +2,8 @@
 # test pipelines which includes SHAP and xgboost.
 # incoming pipeline which doesn't implement yet.
 # lth 2018-12-10
+
+# failed at 20190328
 ####
 
 import itertools
@@ -23,8 +25,7 @@ from tqdm import tqdm
 from tmap.tda import mapper, Filter
 from tmap.tda.cover import Cover
 from tmap.tda.metric import Metric
-from tmap.tda.utils import construct_node_data
-from tmap.tda.utils import optimize_dbscan_eps, cover_ratio, optimal_r
+from tmap.tda.utils import optimize_dbscan_eps
 
 global_verbose = 1
 
@@ -42,14 +43,11 @@ def generate_graph(input_data, dis, _eu_dm=None, eps_threshold=95, overlap_param
     t1 = time.time()
     eps = optimize_dbscan_eps(input_data, threshold=eps_threshold, dm=_eu_dm)
     clusterer = DBSCAN(eps=eps, min_samples=min_samples)
-    if resolution_params == "auto":
-        r = optimal_r(input_data, projected_X, clusterer, 40, overlap_params)
-    else:
-        r = resolution_params
+    r = resolution_params
     cover = Cover(projected_data=MinMaxScaler().fit_transform(projected_X), resolution=r, overlap=overlap_params)
     graph = tm.map(data=input_data, cover=cover, clusterer=clusterer)
     if global_verbose:
-        print('Graph covers %.2f percentage of samples.' % cover_ratio(graph, input_data))
+        print(graph.info())
         print("graph time: ", time.time() - t1)
 
     graph_name = "{eps}_{overlap}_{r}_{filter}.graph".format(eps=eps_threshold, overlap=overlap_params, r=r, filter=lens[0].__class__.__name__)
@@ -78,7 +76,7 @@ def generate_XY(graph, input_data, center=False, weighted=True, beta=1):
         K = scipy.linalg.expm(beta * H)
         return K
 
-    node_data = construct_node_data(graph, input_data)
+    node_data = graph.transform_sn(input_data)
     if "_raw_nodes" in graph["params"]:
         raw_nodes = graph['params']['_raw_nodes']
         node_ids = list(graph["nodes"].keys())

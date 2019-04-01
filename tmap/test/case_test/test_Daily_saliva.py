@@ -3,10 +3,9 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.cluster import DBSCAN
 from tmap.tda import mapper, Filter
 from tmap.tda.cover import Cover
-from tmap.tda.plot import show, Color
+from tmap.tda.plot import Color
 from tmap.tda.metric import Metric
-from tmap.tda.utils import optimize_dbscan_eps,cover_ratio
-from tmap.netx.SAFE import SAFE_batch, get_SAFE_summary
+from tmap.tda.utils import optimize_dbscan_eps
 from tmap.test import load_data
 from scipy.spatial.distance import pdist,squareform
 
@@ -29,18 +28,22 @@ eps = optimize_dbscan_eps(X, threshold=99)
 clusterer = DBSCAN(eps=eps, min_samples=3)
 cover = Cover(projected_data=MinMaxScaler().fit_transform(projected_X), resolution=35, overlap=0.9)
 graph = tm.map(data=X, cover=cover, clusterer=clusterer)
-print('Graph covers %.2f percentage of samples.' % cover_ratio(graph,X))
+print(graph.info())
 
 
 target_feature = 'COLLECTION_DAY'
 
 color = Color(target=metadata.loc[:, target_feature], dtype="numerical", target_by="sample")
-show(data=X, graph=graph, color=color, fig_size=(10, 10), node_size=15, mode='spring', strength=0.03
-     )
+graph.show(color=color,
+           fig_size=(10, 10),
+           node_size=15,
+           strength=0.03,notshow=True)
 
 
 target_feature = 'Bacteroides'
 color = Color(target=X.loc[:, target_feature], dtype="numerical", target_by="sample")
-show(data=X, graph=graph, color=color, fig_size=(10, 10), node_size=15, mode='spring', strength=0.03
-     )
+graph.show(color=color,
+           fig_size=(10, 10),
+           node_size=15,
+           strength=0.03,notshow=True)
 
