@@ -12,7 +12,7 @@ __pycache__/
 # FGFP_metadata.tsv
 # FGFP_metadata_ready.tsv
 check_doc_code.py
-temp_plot.html
+temp-plot.html
 
 # C extensions
 *.so
