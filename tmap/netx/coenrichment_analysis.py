@@ -102,7 +102,7 @@ def coenrichment_for_nodes(graph, nodes, fea, enriched_centroid, SAFE_pvalue=Non
     if SAFE_pvalue is not None and safe_scores is not None:
         fea_enriched_nodes = set([_ for _ in nodes if safe_scores.get(_, 0) >= SAFE_pvalue])
     else:
-        fea_enriched_nodes = set(nodes[::])
+        fea_enriched_nodes = set(nodes)
     fea_nonenriched_nodes = total_nodes.difference(fea_enriched_nodes)
     metainfo[fea] = fea_enriched_nodes, comp_nodes
     for o_f in enriched_centroid.keys():

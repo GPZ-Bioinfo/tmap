@@ -83,7 +83,6 @@ def draw_stratification(graph, SAFE_dict, cols, output, mode='html', n_iter=1000
     sizes = np.array([sizes[_] for _ in range(len(nodes))]).reshape(-1, 1)
 
     transformed_sizes = MinMaxScaler(feature_range=(10, 40)).fit_transform(sizes).ravel()
-    projected_X = graph.data
     xs = []
     ys = []
     for edge in graph.edges:
@@ -157,7 +156,7 @@ def draw_stratification(graph, SAFE_dict, cols, output, mode='html', n_iter=1000
                 y=node_pos[np.array(tmp) == fea, 1],
                 hoverinfo="text",
                 marker=dict(  # color=node_colors,
-                    size=[transformed_sizes[_,0] for _ in np.arange(node_pos.shape[0])[np.array(tmp) == fea]],
+                    size=[transformed_sizes[_] for _ in np.arange(node_pos.shape[0])[np.array(tmp) == fea]],
                     opacity=0.9),
                 showlegend=True,
                 name=str(fea) + ' (%s)' % str(t[fea]),

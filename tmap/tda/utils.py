@@ -64,8 +64,8 @@ def unify_data(data):
     elif type(data) == dict:
         return pd.DataFrame.from_dict(data, orient='index')
     else:
-        print('Unkown data type')
-        return
+        print('Unkown data type. %s' % str(type(data)))
+        return data
 
 
 def transform2node_data(graph, data, mode='mean'):

@@ -87,11 +87,11 @@ color6 = Color(metadata.loc[:, 'circle'], target_by='sample', dtype='numerical')
 color7 = Color(metadata.loc[:, 'circle'], target_by='sample', dtype='categorical')
 from tmap.tda.plot import show
 
-show(graph)
-show(graph, mode=None)
-show(graph, color=color6)
-show(graph, color=color7)
-graph.show_samples(['t1', 't688', 't3000'])
+show(graph,notshow=True)
+show(graph, mode=None,notshow=True)
+show(graph, color=color6,notshow=True)
+show(graph, color=color7,notshow=True)
+graph.show_samples(['t1', 't688', 't3000'],notshow=True)
 graph.show(notshow=True)
 from tmap.tda.plot import vis_progressX
 
@@ -104,4 +104,4 @@ vis_progressX(graph,
               _color_SAFE=color,
               mode='file', auto_open=False)
 
-vis_progressX(graph, color=color6, simple=True)
+vis_progressX(graph, color=color6, simple=True,auto_open=False)
