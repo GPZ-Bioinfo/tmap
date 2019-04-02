@@ -20,7 +20,7 @@ def _permutation(data, graph=None, shuffle_by='node'):
         # permute the node attributes, with the network structure kept
         # inplace change
         p_data = data.apply(lambda col: np.random.permutation(col),
-                              axis=0)
+                            axis=0)
         return p_data
 
     elif shuffle_by == 'sample':
@@ -208,11 +208,11 @@ def get_significant_nodes(graph,
         min_p_value = 1.0 / (n_iter + 1.0)
         SAFE_pvalue = np.log10(pvalue) / np.log10(min_p_value)
 
-    sc_dict = safe_scores.to_dict(orient='index')
+    sc_dict = safe_scores.to_dict(orient='dict')
 
     significant_centroids = {f: [n for n in n2v
                                  if n2v[n] >= SAFE_pvalue] for f,
-                                                                 n2v in sc_dict.items()}
+                                                               n2v in sc_dict.items()}
 
     if r_neighbor:
         significant_neighbor_nodes = {f: list(set([n for n in nodes
@@ -240,6 +240,7 @@ def get_SAFE_summary(graph, metadata, safe_scores, n_iter=None, p_value=0.01, nr
     if safe_scores.shape[0] != metadata.shape[1]:
         safe_scores = safe_scores.T
     assert safe_scores.shape[0] == metadata.shape[1]
+    # safe_score has been transpose into row is features
     if set(metadata.index) != set(graph.rawX.index):
         print("WARNING!!!! The index of metadata and the index of data which provided to mapper are different."
               "It may raise Errors.")
@@ -264,11 +265,9 @@ def get_SAFE_summary(graph, metadata, safe_scores, n_iter=None, p_value=0.01, nr
 
     safe_significant_samples_n = {feature: len(sample_names) for feature,
                                                                  sample_names in safe_significant_samples.items()}
-
     safe_significant_score = {feature: np.sum(safe_scores.loc[feature,
                                                               safe_significant_centroids[feature]])
                               for feature in feature_names}
-
     if _output_details:
         safe_summary = {'enriched_neighbor_nodes': safe_significant_neighbor_nodes,
                         'enriched_centroids_nodes': safe_significant_centroids,
@@ -279,15 +278,9 @@ def get_SAFE_summary(graph, metadata, safe_scores, n_iter=None, p_value=0.01, nr
     feature_total = metadata.sum(axis=0)
     remained_features = [feature for feature in feature_names if safe_significant_samples[feature]]
 
-    if any(metadata.index.isin(list(safe_significant_samples.values())[0])):
-        enriched_abundance_ratio = {feature: np.sum(metadata.loc[safe_significant_samples[feature],
-                                                                 feature]) / feature_total[feature] if feature in remained_features
-        else 0 for feature in feature_names}
-    else:
-        enriched_abundance_ratio = {feature: np.sum(metadata.iloc[safe_significant_samples[feature],
-                                                                 feature]) / feature_total[feature] if feature in remained_features
-        else 0 for feature in feature_names}
-
+    enriched_abundance_ratio = {feature: np.sum(metadata.loc[safe_significant_samples[feature],
+                                                             feature]) / feature_total[feature] if feature in remained_features
+    else 0 for feature in feature_names}
     # helper for safe division for integer and divide_by zero
     def _safe_div(x, y):
         if y == 0.0:
