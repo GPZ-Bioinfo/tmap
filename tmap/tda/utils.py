@@ -138,7 +138,7 @@ def verify_metadata(graph, meta_data, by='node'):
 
 
 def output_fig(fig, output, mode):
-    if mode == 'html' or output.endswith('html'):
+    if mode == 'html' and output.endswith('html'):
         plotly.offline.plot(fig, filename=output, auto_open=False)
     else:
         pio.write_image(fig, output, format=mode)

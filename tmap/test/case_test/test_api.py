@@ -14,7 +14,7 @@ cmdlines = """
 {ppath} {api}/Network_generator.py -I {data_dir}/FGFP_genus_data.csv -O {odir}/FGFP.graph -v
 {ppath} {api}/SAFE_analysis.py both -G {odir}/FGFP.graph -M {odir}/temp.envfit.data {odir}/temp.envfit.metadata -P {odir}/FGFP -i 1000 -p 0.05 -r -v
 {ppath} {api}/SAFE_visualization.py ranking -G {odir}/FGFP.graph -S1 {odir}/FGFP_raw_enrich -S2 {odir}/FGFP_temp.envfit.data_enrich.csv {odir}/FGFP_temp.envfit.metadata_enrich.csv -O {odir}/FGFP_ranking.html
-{ppath} {api}/SAFE_visualization.py stratification -G {odir}/FGFP.graph -S1 {odir}/FGFP_raw_enrich -S2 {odir}/FGFP_temp.envfit.data_enrich.csv {odir}/FGFP_temp.envfit.metadata_enrich.csv -O {odir}/FGFP_stratification.html
+{ppath} {api}/SAFE_visualization.py stratification -G {odir}/FGFP.graph -S1 {odir}/FGFP_raw_enrich -S2 {odir}/FGFP_temp.envfit.data_enrich.csv {odir}/FGFP_temp.envfit.metadata_enrich.csv -O {odir}/FGFP_stratification.pdf
 {ppath} {api}/SAFE_visualization.py ordination -G {odir}/FGFP.graph -S1 {odir}/FGFP_raw_enrich -S2 {odir}/FGFP_temp.envfit.data_enrich.csv {odir}/FGFP_temp.envfit.metadata_enrich.csv -O {odir}/FGFP_ordination.html
 """.format(ppath=p_path,
            data_dir=data_dir,
