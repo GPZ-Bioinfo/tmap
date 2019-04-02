@@ -7,24 +7,6 @@ from tqdm import tqdm
 from tmap.netx.SAFE import get_significant_nodes
 
 
-#
-# def get_component_nodes(graph, enriched_nodes):
-#     """
-#     Given a list of enriched nodes which comes from ``get_enriched_nodes``. Normally it the enriched_centroid instead of the others nodes around them.
-#     :param list enriched_nodes: list of nodes ID which is enriched with given feature and threshold.
-#     :param graph:
-#     :return: A nested list which contain multiple list of nodes which is not connected to each other.
-#     """
-#     sub_nodes = list(enriched_nodes)
-#     sub_edges = [edge for edge in graph.edges if edge[0] in sub_nodes and edge[1] in sub_nodes]
-#
-#     G = nx.Graph()
-#     G.add_nodes_from(sub_nodes)
-#     G.add_edges_from(sub_edges)
-#
-#     comp_nodes = [nodes for nodes in nx.algorithms.components.connected_components(G)]
-#     return comp_nodes
-
 
 def is_enriched(s1, s2, s3, s4):
     """

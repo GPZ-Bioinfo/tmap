@@ -3,8 +3,7 @@ from subprocess import check_call
 
 from tmap.api.general import randomString
 
-# itspath = os.path.abspath(__file__)
-itspath = os.path.abspath("/home/liaoth/project/TDA_paper/tmap/tmap/test/case_test/test_api.py")
+itspath = os.path.abspath(__file__)
 data_dir = os.path.join(os.path.dirname(os.path.dirname(itspath)),'test_data')
 api_dir = os.path.join(os.path.dirname(itspath), '..','..', 'api')
 out_dir = "/tmp/tmp_%s" % randomString(5)
