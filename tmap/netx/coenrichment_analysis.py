@@ -1,10 +1,11 @@
 import numpy as np
 import pandas as pd
 import scipy.stats as scs
+from statsmodels.sandbox.stats.multicomp import multipletests
 from tqdm import tqdm
 
 from tmap.netx.SAFE import get_significant_nodes
-from statsmodels.sandbox.stats.multicomp import multipletests
+
 
 #
 # def get_component_nodes(graph, enriched_nodes):
@@ -39,7 +40,7 @@ def is_enriched(s1, s2, s3, s4):
         return False
 
 
-def coenrichment_for_nodes(graph, nodes, fea, enriched_centroid, SAFE_pvalue=None, safe_scores=None, _filter=True, mode='both'):
+def coenrichment_for_nodes(graph, nodes, enriched_centroid, name, safe_scores=None, SAFE_pvalue=None, _filter=True, mode='both'):
     """
     Coenrichment main function
     With given feature and its enriched nodes, we could construct a contingency table when we comparing to other feature and its enriched nodes.
@@ -77,13 +78,13 @@ def coenrichment_for_nodes(graph, nodes, fea, enriched_centroid, SAFE_pvalue=Non
 
     For global correlative, keys are compared features and values are tuples (oddsratio, pvalue) from fisher-exact test.
     For local correlative, keys are tuples of (index of components, size of components, features) and values are as same as global correlative.
-    The remaining metainfo is a dictionary shared same key to global/local correlative but contains contingency table info.
+            The remaining metainfo is a dictionary shared same key to global/local correlative but contains contingency table info.
 
     :param tmap.tda.Graph.Graph graph: tmap constructed graph
     :param list nodes: a list of nodes you want to process from specific feature
-    :param str fea: feature name which doesn't need to exist at enriched_centroid
-    :param dict enriched_centroid: enriched_centroide output from ``get_enriched_nodes``
-    :param float threshold: None or a threshold for SAFE score. If it is a None, it will not filter the nodes.
+    :param str name: feature name which doesn't need to exist at enriched_centroid
+    :param dict enriched_centroid: enriched_centroids output from ``get_significant_nodes``
+    :param float SAFE_pvalue: None or a threshold for SAFE score. If it is a None, it will not filter the nodes.
     :param pd.DataFrame safe_scores: A DataFrame which store SAFE_scores for filter the nodes. If you want to filter the nodes, it must simultaneously give safe_scores and threshold.
     :param str mode: [both|global|local]
     :return:
@@ -95,19 +96,19 @@ def coenrichment_for_nodes(graph, nodes, fea, enriched_centroid, SAFE_pvalue=Non
 
     total_nodes = set(graph.nodes)
     comp_nodes = graph.get_component_nodes(nodes)
-    safe_scores = safe_scores.to_dict(orient='dict')
 
     metainfo = {}
     global_correlative_feas = {}
     sub_correlative_feas = {}
     if SAFE_pvalue is not None and safe_scores is not None:
+        safe_scores = safe_scores.to_dict(orient='dict')
         fea_enriched_nodes = set([_ for _ in nodes if safe_scores.get(_, 0) >= SAFE_pvalue])
     else:
         fea_enriched_nodes = set(nodes)
     fea_nonenriched_nodes = total_nodes.difference(fea_enriched_nodes)
-    metainfo[fea] = fea_enriched_nodes, comp_nodes
+    metainfo[name] = fea_enriched_nodes, comp_nodes
     for o_f in enriched_centroid.keys():
-        if o_f != fea:
+        if o_f != name:
             o_f_enriched_nodes = set(enriched_centroid[o_f])
             o_f_nonenriched_nodes = total_nodes.difference(o_f_enriched_nodes)
             if mode == 'both' or 'global':
@@ -170,7 +171,7 @@ def coenrichment_for_nodes(graph, nodes, fea, enriched_centroid, SAFE_pvalue=Non
         return
 
 
-def batch_coenrichment(fea, graph, safe_scores, n_iter=5000, p_value=0.05, _pre_cal_enriched=None):
+def batch_coenrichment(fea, graph, safe_scores=None, n_iter=5000, p_value=0.05, _pre_cal_enriched=None):
     """
     Batch find with given feature at all possible features found at safe_scores.
     If _pre_cal_enriched was given, n_iter and p_value will be useless. Or you should modify n_iter and p_value as the params you passed to ``SAFE`` algorithm.
@@ -186,7 +187,7 @@ def batch_coenrichment(fea, graph, safe_scores, n_iter=5000, p_value=0.05, _pre_
     global_correlative_feas = {}
     sub_correlative_feas = {}
     metainfo = {}
-    safe_scores = safe_scores.to_dict(orient='dict')
+
     print('building network...')
 
     if '__iter__' in dir(fea):
@@ -196,17 +197,19 @@ def batch_coenrichment(fea, graph, safe_scores, n_iter=5000, p_value=0.05, _pre_
     else:
         raise SyntaxError
 
-    for fea in fea_batch:
-        if fea in safe_scores.keys():
-            if not _pre_cal_enriched:
-                enriched_centroid, enriched_node = get_significant_nodes(graph=graph,
-                                                                          safe_scores=safe_scores,
-                                                                          pvalue=p_value,
-                                                                          n_iter=n_iter,
-                                                                          r_neighbor=True)
-            else:
-                enriched_centroid = _pre_cal_enriched
+    if _pre_cal_enriched is None and safe_scores is None:
+        raise Exception('_pre_cal_enriched and safe_scores must pass one of them')
+    elif _pre_cal_enriched is None and safe_scores is not None:
+        enriched_centroid = get_significant_nodes(graph=graph,
+                                                  safe_scores=safe_scores,
+                                                  pvalue=p_value,
+                                                  n_iter=n_iter,
+                                                  )
+    else:
+        enriched_centroid = _pre_cal_enriched
 
+    for fea in set(fea_batch):
+        if fea in safe_scores.columns:
             _global, _local, _meta = coenrichment_for_nodes(graph,
                                                             enriched_centroid[fea],
                                                             fea,
@@ -214,6 +217,8 @@ def batch_coenrichment(fea, graph, safe_scores, n_iter=5000, p_value=0.05, _pre_
             global_correlative_feas.update(_global)
             sub_correlative_feas.update(_local)
             metainfo.update(_meta)
+        else:
+            print("%s doesn't exist at the columns of provided safe_scores.")
     return global_correlative_feas, sub_correlative_feas, metainfo
 
 
@@ -223,8 +228,8 @@ def construct_correlative_metadata(fea, global_correlative_feas, sub_correlative
     :param fea:
     :param global_correlative_feas:
     :param sub_correlative_feas:
-    :param metainfo:
-    :param node_data:
+    :param dict metainfo:
+    :param pd.DataFrame node_data:
     :return:
     """
     if verbose:
@@ -327,19 +332,18 @@ def pairwise_coenrichment(graph, safe_scores, n_iter=5000, p_value=0.05, _pre_ca
         iter_obj = safe_scores.columns
 
     if not _pre_cal_enriched:
-        enriched_centroid, enriched_nodes = get_significant_nodes(graph=graph,
-                                                                  safe_scores=safe_scores,
-                                                                  pvalue=p_value,
-                                                                  n_iter=n_iter,
-                                                                  r_neighbor=True)
+        enriched_centroid = get_significant_nodes(graph=graph,
+                                                  safe_scores=safe_scores,
+                                                  pvalue=p_value,
+                                                  n_iter=n_iter)
     else:
         enriched_centroid = _pre_cal_enriched
 
     for fea in iter_obj:
         _global, _meta = coenrichment_for_nodes(graph,
                                                 enriched_centroid[fea],
-                                                fea,
                                                 enriched_centroid,
+                                                name=fea,
                                                 safe_scores=safe_scores,
                                                 mode='global',
                                                 _filter=False)
@@ -355,8 +359,8 @@ def pairwise_coenrichment(graph, safe_scores, n_iter=5000, p_value=0.05, _pre_ca
         dist_matrix.loc[fea, fea] = 0
 
     # correct for multiple testing
-    corrected_dist_matrix = pd.DataFrame(multipletests(dist_matrix.values.reshape(-1,),
-                                                  method='fdr_bh')[1].reshape(dist_matrix.shape),
-                                index=dist_matrix.index,
-                                columns=dist_matrix.columns)
+    corrected_dist_matrix = pd.DataFrame(multipletests(dist_matrix.values.reshape(-1, ),
+                                                       method='fdr_bh')[1].reshape(dist_matrix.shape),
+                                         index=dist_matrix.index,
+                                         columns=dist_matrix.columns)
     return corrected_dist_matrix

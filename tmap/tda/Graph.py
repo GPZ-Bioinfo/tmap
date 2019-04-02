@@ -181,7 +181,6 @@ class Graph(nx.Graph):
         """
         calculate neighborhood scores for each node from node associated data
         :param node_data: node associated values
-        :param _cal_type: hidden parameters. For a big data with too many features(>=100), calculation with pandas will faster than using dict.
         :return: return a dict with keys of center nodes, value is a float
         """
         if neighborhoods is None:
@@ -198,11 +197,11 @@ class Graph(nx.Graph):
             aggregated_fun = map_fun[mode]
 
         if 'weighted_' in mode:
+            # weighted neighborhood scores by node size
             sizes = [self.nodes[nid]['size'] for nid in node_data.index]
             node_data = node_data.multiply(sizes, axis='index')
 
         nv = node_data.values
-        # weighted neighborhood scores by node size
         neighborhood_scores = {k: aggregated_fun(nv[neighbors, :], 0)
                                for k, neighbors in neighborhoods.items()}
         neighborhood_scores = pd.DataFrame.from_dict(neighborhood_scores,
@@ -245,10 +244,10 @@ class Graph(nx.Graph):
         else:
             return self.rawX.index.get_loc(sname)
 
-    def node2sample(self, nodeid):
+    def node2sample(self, nodeid, rid=False):
         """
         :param list/str nodeid:
-        :return:
+        :return: unsorted samples names
         """
         self.check_empty()
         nodes = self.nodes
@@ -258,8 +257,10 @@ class Graph(nx.Graph):
                 samples += list(nodes[nid]['sample'])
         else:
             samples += list(nodes[nodeid]['sample'])
-
-        return self.sid2sname(list(set(samples)))
+        if rid:
+            return list(set(samples))
+        else:
+            return self.sid2sname(list(set(samples)))
 
     def sample2nodes(self, sampleid):
         """

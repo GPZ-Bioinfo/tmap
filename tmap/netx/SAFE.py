@@ -15,18 +15,17 @@ def _permutation(data, graph=None, shuffle_by='node'):
     :return: it must be a matrix with node x features shapes.
     :rtype: pd.DataFrame
     """
-    p_data = data.copy(deep=True)  # deep copy is important
     if shuffle_by == 'node':
-        assert p_data.shape[0] == len(graph.nodes)
+        assert data.shape[0] == len(graph.nodes)
         # permute the node attributes, with the network structure kept
         # inplace change
-        p_data = p_data.apply(lambda col: np.random.permutation(col),
+        p_data = data.apply(lambda col: np.random.permutation(col),
                               axis=0)
         return p_data
 
     elif shuffle_by == 'sample':
-        assert p_data.shape[0] == graph.rawX.shape[0]
-        p_data = p_data.apply(lambda col: np.random.permutation(col), axis=0)
+        assert data.shape[0] == graph.rawX.shape[0]
+        p_data = data.apply(lambda col: np.random.permutation(col), axis=0)
         p_data = graph.transform_sn(p_data, type='s2n')
         # restrict the speed of shuffle by sample.
         # take double time compared to shuffle_by node.
@@ -89,9 +88,10 @@ def _SAFE(graph, data, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffl
     neighborhood_enrichments = np.zeros(node_data.shape)
     neighborhood_decline = np.zeros(node_data.shape)
 
+    _p_data = data.copy()
     for _ in iter_obj:
         # use independent function to perform permutation.
-        p_data = _permutation(data, graph=graph, shuffle_by=shuffle_by)  # it should provide the raw metadata instead of transformed data.
+        p_data = _permutation(_p_data, graph=graph, shuffle_by=shuffle_by)  # it should provide the raw metadata instead of transformed data.
         p_neighborhood_scores = graph.neighborhood_score(node_data=p_data, neighborhoods=neighborhoods, mode=agg_mode)
         _1 = p_neighborhood_scores.values
         neighborhood_enrichments[_1 >= _2] += 1
@@ -190,7 +190,7 @@ def get_significant_nodes(graph,
         1. centroides mean the node itself
         2. neighbor_nodes mean the neighbor nodes during SAFE calculation (For advanced usage)
     :param tmap.tda.Graph.Graph graph:
-    :param safe_scores:
+    :param pd.DataFrame safe_scores:
     :param nr_threshold:
     :param pvalue:
     :param n_iter:
@@ -208,17 +208,16 @@ def get_significant_nodes(graph,
         min_p_value = 1.0 / (n_iter + 1.0)
         SAFE_pvalue = np.log10(pvalue) / np.log10(min_p_value)
 
-    filter_dict = safe_scores.where(safe_scores >= SAFE_pvalue).to_dict()
+    sc_dict = safe_scores.to_dict(orient='index')
 
-    significant_centroids = {k: [v for v in vdict
-                                 if not pd.isnull(vdict[v])] for k,
-                                                                 vdict in filter_dict.items()}
-
-    significant_neighbor_nodes = {f: list(set([n for n in nodes
-                                               for n in neighborhoods[n]]))
-                                  for f, nodes in significant_centroids.items()}
+    significant_centroids = {f: [n for n in n2v
+                                 if n2v[n] >= SAFE_pvalue] for f,
+                                                                 n2v in sc_dict.items()}
 
     if r_neighbor:
+        significant_neighbor_nodes = {f: list(set([n for n in nodes
+                                                   for n in neighborhoods[n]]))
+                                      for f, nodes in significant_centroids.items()}
         return significant_centroids, significant_neighbor_nodes
     else:
         return significant_centroids
@@ -227,17 +226,24 @@ def get_significant_nodes(graph,
 def get_SAFE_summary(graph, metadata, safe_scores, n_iter=None, p_value=0.01, nr_threshold=0.5, _output_details=False):
     """
     summary the SAFE scores for feature enrichment results
+    Noticeably, we will use the index of data which provided to mapper. So if the index of metadata you passed is different with its, it may raise error.
     :param tmap.tda.Graph.Graph graph:
     :param metadata: [n_samples, n_features]
     :param pd.DataFrame safe_scores: node x features matrix
     :param n_iter:
     :param p_value:
+    :param nr_threshold:
+    :param _output_details:
     :return:
     """
     # todo: refactor into a SAFE summary class?
     if safe_scores.shape[0] != metadata.shape[1]:
         safe_scores = safe_scores.T
     assert safe_scores.shape[0] == metadata.shape[1]
+    if set(metadata.index) != set(graph.rawX.index):
+        print("WARNING!!!! The index of metadata and the index of data which provided to mapper are different."
+              "It may raise Errors.")
+
     # make safe_scores become a matrix with shape like (feature,nodes)
 
     feature_names = safe_scores.index
@@ -272,9 +278,15 @@ def get_SAFE_summary(graph, metadata, safe_scores, n_iter=None, p_value=0.01, nr
     # calculate enriched ratios ('enriched abundance' / 'total abundance')
     feature_total = metadata.sum(axis=0)
     remained_features = [feature for feature in feature_names if safe_significant_samples[feature]]
-    enriched_abundance_ratio = {feature: np.sum(metadata.loc[safe_significant_samples[feature],
-                                                             feature]) / feature_total[feature] if feature in remained_features
-    else 0 for feature in feature_names}
+
+    if any(metadata.index.isin(list(safe_significant_samples.values())[0])):
+        enriched_abundance_ratio = {feature: np.sum(metadata.loc[safe_significant_samples[feature],
+                                                                 feature]) / feature_total[feature] if feature in remained_features
+        else 0 for feature in feature_names}
+    else:
+        enriched_abundance_ratio = {feature: np.sum(metadata.iloc[safe_significant_samples[feature],
+                                                                 feature]) / feature_total[feature] if feature in remained_features
+        else 0 for feature in feature_names}
 
     # helper for safe division for integer and divide_by zero
     def _safe_div(x, y):

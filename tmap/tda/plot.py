@@ -16,7 +16,7 @@ from scipy import stats
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 
 from tmap.netx.SAFE import get_significant_nodes
-from tmap.tda.utils import c_node_text,write_figure
+from tmap.tda.utils import c_node_text, write_figure
 
 
 class Color(object):
@@ -202,7 +202,7 @@ class Color(object):
                 # target_in_node could be str or int...
                 most_num = stats.mode(target_in_node)[0][0][0]
                 if self.label_encoder is not None:
-                    num2str = dict(zip(self.target[:,0],
+                    num2str = dict(zip(self.target[:, 0],
                                        self.label_encoder.inverse_transform(self.target.ravel())))
                     most_str = num2str[most_num]
                 else:
@@ -245,7 +245,7 @@ class Color(object):
         return sample_colors, cat2color
 
 
-def show(graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2, mode='spring',notshow=False,**kwargs):
+def show(graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2, mode='spring', notshow=False, **kwargs):
     """
     Network visualization of TDA mapper
 
@@ -343,11 +343,11 @@ def show(graph, color=None, fig_size=(10, 10), node_size=10, edge_width=2, mode=
     if mode == 'spring':
         ori_pos = graph.data
         if ori_pos.shape[1] < 2:
-            pos = nx.spring_layout(graph,**kwargs)
+            pos = nx.spring_layout(graph, **kwargs)
         else:
-            ori_pos = graph.transform_sn(ori_pos[:, :2],type='s2n')
-            ori_pos = {n:tuple(ori_pos.iloc[n,:2]) for n in graph.nodes}
-            pos = nx.spring_layout(graph, pos=ori_pos,**kwargs)
+            ori_pos = graph.transform_sn(ori_pos[:, :2], type='s2n')
+            ori_pos = {n: tuple(ori_pos.iloc[n, :2]) for n in graph.nodes}
+            pos = nx.spring_layout(graph, pos=ori_pos, **kwargs)
         # add legend
         nx.draw_networkx(graph,
                          ax=ax,
@@ -440,7 +440,7 @@ def vis_progressX(graph, simple=False, mode='file', color=None, _color_SAFE=None
 
         sample_colors, cat2color = color.get_sample_colors()
         if color.dtype == 'categorical':
-            legend_names = target2colors[0][:,0]
+            legend_names = target2colors[0][:, 0]
 
     # For calculating the dynamic process. It need to duplicate the samples first.
     # reconstructing the ori_MDS into the samples_pos
@@ -668,8 +668,8 @@ def vis_progressX(graph, simple=False, mode='file', color=None, _color_SAFE=None
 
 def draw_enriched_plot(graph,
                        safe_score,
-                       fea,
                        metainfo,
+                       fea,
                        _filter_size=0,
                        mode='file',
                        **kwargs):
@@ -684,6 +684,7 @@ def draw_enriched_plot(graph,
     :param kwargs:
     :return:
     """
+
     enriched_nodes, comps_nodes = metainfo[fea]
 
     node_pos = graph.nodePos
@@ -691,28 +692,7 @@ def draw_enriched_plot(graph,
     safe_score = safe_score.to_dict(orient='dict')
 
     fig = plotly.tools.make_subplots(1, 1)
-    xs = []
-    ys = []
-
-    for edge in graph.edges:
-        xs += [node_pos[edge[0], 0],
-               node_pos[edge[1], 0],
-               None]
-        ys += [node_pos[edge[0], 1],
-               node_pos[edge[1], 1],
-               None]
-
-    node_line = go.Scatter(
-        # ordination line
-        visible=True,
-        x=xs,
-        y=ys,
-        hoverinfo='none',
-        marker=dict(color="#8E9DA2", ),
-        line=dict(width=1),
-        showlegend=False,
-        mode="lines")
-
+    node_line = vis_progressX(graph, simple=True, mode='obj').data[0]
     fig.append_trace(node_line, 1, 1)
 
     for idx, nodes in enumerate(comps_nodes):
