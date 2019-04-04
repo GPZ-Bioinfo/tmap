@@ -58,6 +58,7 @@ def convertor(compared_count, n_iter):
 def _SAFE(graph, data, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffle_by="node", _mode='enrich', agg_mode='sum', verbose=1):
     """
     perform SAFE analysis by node permutations
+
     :param tmap.tda.Graph.Graph graph:
     :param data: dynamic shape depending on the shuffle_obj. Input by ``tmap.netx.SAFE.SAFE_batch``
     :param n_iter: number of permutations

@@ -138,12 +138,14 @@ def verify_metadata(graph, meta_data, by='node'):
 
 
 def output_fig(fig, output, mode):
-    if not output.endswith('html') and mode == 'html':
+    if not output.endswith('html'):
         mode = output.rpartition('.')[-1]
         if mode in ['eps', 'jpeg', 'jpg', 'pdf', 'png', 'svg', 'webp']:
             pio.write_image(fig, output, format=mode)
-        else:
+        elif mode == 'html':
             plotly.offline.plot(fig, filename=output, auto_open=False)
+        else:
+            raise Exception("Unknown type or Unknown suffix of filename")
     elif mode == 'html' or output.endswith('html'):
         plotly.offline.plot(fig, filename=output, auto_open=False)
     else:
