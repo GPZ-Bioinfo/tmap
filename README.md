@@ -15,7 +15,7 @@ To install tmap, run:
     cd tmap
     python setup.py install
     # For some dependency problems. please install following packages.
-    pip install scikit-bio
+    pip install scikit-bio,psutil
     R -e "install.packages('vegan',repo='http://cran.rstudio.com/')"
 ```
 
@@ -23,6 +23,10 @@ or you could also use pip now:
 ```bash
 pip install tmap
 ```
+
+Now, we also provide a better way to install tmap package. Using [docker](https://docs.docker.com/) and [dockerfile](https://github.com/GPZ-Bioinfo/tmap/blob/master/dockerfile) to build a images to solve all dependency problems.
+
+After clone the repositories, you could use `cd tmap; docker build -t tmap .`
 
 If you encounter any error like `Import error: tkinter`, you need to run `sudo apt install python-tk` or `sudo apt install python3-tk`.
 
