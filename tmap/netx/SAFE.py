@@ -1,8 +1,12 @@
+import time
+from multiprocessing import cpu_count, Process, Manager
+
 import numpy as np
 import pandas as pd
 from statsmodels.sandbox.stats.multicomp import multipletests
 from tqdm import tqdm
 
+from tmap.tda.utils import batch_iter
 from tmap.tda.utils import verify_metadata, unify_data
 
 
@@ -55,7 +59,19 @@ def convertor(compared_count, n_iter):
     return safe_scores
 
 
-def _SAFE(graph, data, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffle_by="node", _mode='enrich', agg_mode='sum', verbose=1):
+def PandC(graph, shuffle_by, _p_data, ori_v, neighborhoods, agg_mode, sub_i, q):
+    # use independent function to perform permutation.
+    np.random.seed(int(time.time() % 1e6))
+    for _ in range(sub_i):
+        p_data = _permutation(_p_data, graph=graph, shuffle_by=shuffle_by)  # it should provide the raw metadata instead of transformed data.
+        p_neighborhood_scores = graph.neighborhood_score(node_data=p_data, neighborhoods=neighborhoods, mode=agg_mode)
+        _1 = p_neighborhood_scores.values
+        enrich = _1 >= ori_v
+        decline = _1 <= ori_v
+        q.append((enrich, decline))
+
+
+def _SAFE(graph, data, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffle_by="node", _mode='enrich', agg_mode='sum', num_thread=0, verbose=1):
     """
     perform SAFE analysis by node permutations
 
@@ -65,38 +81,60 @@ def _SAFE(graph, data, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffl
     :param nr_threshold: Float in range of [0,100]. The threshold is used to cut path distance with percentiles for neighbour.
     :return: return dict with keys of nodes ID, values are normalized and multi-test corrected p values.
     """
+
     if _mode not in ['enrich', 'decline', 'both']:
         raise SyntaxError('_mode must be one of [enrich , decline]')
-    if shuffle_by == 'sample':
+    if data.shape[0] == len(graph.sample_names):
         # it means provided metadata is shaped as samples x features, so we need transformed it.
         # be carefull the if/else, do not reverse.
         node_data = graph.transform_sn(data,
                                        type='s2n')
+    elif data.shape[0] == graph.nodePos.shape[0]:
+        node_data = data.copy()
     else:
-        node_data = data
-
+        raise Exception("Wrong data passed")
     neighborhoods = graph.get_neighborhoods(nr_threshold=nr_threshold) if neighborhoods is None else neighborhoods
     neighborhood_scores = graph.neighborhood_score(node_data=node_data,
                                                    neighborhoods=neighborhoods,
                                                    mode=agg_mode)
-    _2 = neighborhood_scores.values
+    ori_v = neighborhood_scores.values
     if verbose == 0:
-        iter_obj = range(n_iter)
+        pbar = None
     else:
-        iter_obj = tqdm(range(n_iter))
+        pbar = tqdm(total=n_iter)
 
-    # enrichment (p-value) as a rank in the permutation scores (>=, ordered)
-    neighborhood_enrichments = np.zeros(node_data.shape)
-    neighborhood_decline = np.zeros(node_data.shape)
+    if num_thread == 0:
+        num_thread = cpu_count()
 
-    _p_data = data.copy()
-    for _ in iter_obj:
-        # use independent function to perform permutation.
-        p_data = _permutation(_p_data, graph=graph, shuffle_by=shuffle_by)  # it should provide the raw metadata instead of transformed data.
-        p_neighborhood_scores = graph.neighborhood_score(node_data=p_data, neighborhoods=neighborhoods, mode=agg_mode)
-        _1 = p_neighborhood_scores.values
-        neighborhood_enrichments[_1 >= _2] += 1
-        neighborhood_decline[_1 <= _2] += 1
+    _p_data = node_data.copy() if shuffle_by == 'node' else data.copy()
+
+    chunks = batch_iter(range(n_iter), num_thread)
+    manager = Manager()
+    q = manager.list()
+    processes = []
+    for _ in chunks:
+        p = Process(target=PandC,
+                    args=(graph,
+                          shuffle_by,
+                          _p_data,
+                          ori_v,
+                          neighborhoods,
+                          agg_mode,
+                          len(_),
+                          q))
+        processes.append(p)
+        p.daemon = True
+        p.start()
+    while 1:
+        if pbar:
+            pbar.update(len(q) - pbar.n)
+        if len(q) == n_iter:
+            pbar.update(n_iter - pbar.n)
+            pbar.close()
+            break
+
+    neighborhood_enrichments = np.sum([_[0] for _ in q], axis=0)
+    neighborhood_decline = np.sum([_[1] for _ in q], axis=0)
 
     neighborhood_enrichments = pd.DataFrame(neighborhood_enrichments,
                                             index=list(graph.nodes),
@@ -117,7 +155,7 @@ def _SAFE(graph, data, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffl
         return safe_scores_decline
 
 
-def SAFE_batch(graph, metadata, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffle_by="node", _mode='enrich', agg_mode='sum', verbose=1, name=None, **kwargs):
+def SAFE_batch(graph, metadata, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffle_by="node", _mode='enrich', agg_mode='sum', verbose=1, name=None,num_thread=0, **kwargs):
     """
     Entry of SAFE analysis
     Map sample meta-data to node associated values (using means),
@@ -151,7 +189,8 @@ def SAFE_batch(graph, metadata, n_iter=1000, nr_threshold=0.5, neighborhoods=Non
                             _mode=_mode,
                             agg_mode=agg_mode,
                             shuffle_by=shuffle_by,
-                            verbose=verbose)
+                            verbose=verbose,
+                            num_thread=num_thread)
 
     # record SAFE params
     _params = {'shuffle_by': shuffle_by,
@@ -282,6 +321,7 @@ def get_SAFE_summary(graph, metadata, safe_scores, n_iter=None, p_value=0.01, nr
     enriched_abundance_ratio = {feature: np.sum(metadata.loc[safe_significant_samples[feature],
                                                              feature]) / feature_total[feature] if feature in remained_features
     else 0 for feature in feature_names}
+
     # helper for safe division for integer and divide_by zero
     def _safe_div(x, y):
         if y == 0.0:

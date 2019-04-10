@@ -101,15 +101,10 @@ class Mapper(object):
 
         # projection data & raw data should have a same number of points
         assert data.shape[0] == cover.n_points
-        if self.verbose >= 1:
-            print("Mapping on data %s using lens %s" %
-                  (str(data.shape), str(cover.data.shape)))
         # Define covering of the projection data and minimal number of points in a hypercube to be cluster
         cluster_params = clusterer.get_params()
         min_cluster_samples = cluster_params.get("min_samples", 1)
-        if self.verbose >= 1:
-            print("...minimal number of points in hypercube to do clustering: %d" % (min_cluster_samples,))
-            # print("...iterating ")
+
         # generate hypercubes from the cover and perform clustering analysis
         cubes = cover.hypercubes
         data_idx = np.arange(data.shape[0])
@@ -150,6 +145,9 @@ class Mapper(object):
                     node_id += 1
 
         if self.verbose >= 1:
+            print("Mapping on data %s using lens %s" %
+                  (str(data.shape), str(cover.data.shape)))
+            print("...minimal number of points in hypercube to do clustering: %d" % (min_cluster_samples,))
             print("...create %s nodes." % (len(nodes)))
         # no cluster of nodes, and return None
         if len(nodes) == 0:
