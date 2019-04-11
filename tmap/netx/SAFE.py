@@ -1,13 +1,10 @@
 import time
-from multiprocessing import cpu_count, Process, Manager
 
 import numpy as np
 import pandas as pd
 from statsmodels.sandbox.stats.multicomp import multipletests
-from tqdm import tqdm
 
-from tmap.tda.utils import batch_iter
-from tmap.tda.utils import verify_metadata, unify_data
+from tmap.tda.utils import verify_metadata, unify_data, parallel_works
 
 
 def _permutation(data, graph=None, shuffle_by='node'):
@@ -79,6 +76,7 @@ def _SAFE(graph, data, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffl
     :param data: dynamic shape depending on the shuffle_obj. Input by ``tmap.netx.SAFE.SAFE_batch``
     :param n_iter: number of permutations
     :param nr_threshold: Float in range of [0,100]. The threshold is used to cut path distance with percentiles for neighbour.
+    :param num_thread: number of threads used to parallel jobs
     :return: return dict with keys of nodes ID, values are normalized and multi-test corrected p values.
     """
 
@@ -98,43 +96,22 @@ def _SAFE(graph, data, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffl
                                                    neighborhoods=neighborhoods,
                                                    mode=agg_mode)
     ori_v = neighborhood_scores.values
-    if verbose == 0:
-        pbar = None
-    else:
-        pbar = tqdm(total=n_iter)
-
-    if num_thread == 0:
-        num_thread = cpu_count()
 
     _p_data = node_data.copy() if shuffle_by == 'node' else data.copy()
 
-    chunks = batch_iter(range(n_iter), num_thread)
-    manager = Manager()
-    q = manager.list()
-    processes = []
-    for _ in chunks:
-        p = Process(target=PandC,
-                    args=(graph,
-                          shuffle_by,
-                          _p_data,
-                          ori_v,
-                          neighborhoods,
-                          agg_mode,
-                          len(_),
-                          q))
-        processes.append(p)
-        p.daemon = True
-        p.start()
-    while 1:
-        if pbar:
-            pbar.update(len(q) - pbar.n)
-        if len(q) == n_iter:
-            pbar.update(n_iter - pbar.n)
-            pbar.close()
-            break
+    results = parallel_works(func=PandC,
+                             args=(graph,
+                                   shuffle_by,
+                                   _p_data,
+                                   ori_v,
+                                   neighborhoods,
+                                   agg_mode),
+                             n_iter=n_iter,
+                             num_thread=num_thread,
+                             verbose=verbose)
 
-    neighborhood_enrichments = np.sum([_[0] for _ in q], axis=0)
-    neighborhood_decline = np.sum([_[1] for _ in q], axis=0)
+    neighborhood_enrichments = np.sum([_[0] for _ in results], axis=0)
+    neighborhood_decline = np.sum([_[1] for _ in results], axis=0)
 
     neighborhood_enrichments = pd.DataFrame(neighborhood_enrichments,
                                             index=list(graph.nodes),
@@ -155,7 +132,7 @@ def _SAFE(graph, data, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffl
         return safe_scores_decline
 
 
-def SAFE_batch(graph, metadata, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffle_by="node", _mode='enrich', agg_mode='sum', verbose=1, name=None,num_thread=0, **kwargs):
+def SAFE_batch(graph, metadata, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffle_by="node", _mode='enrich', agg_mode='sum', verbose=1, name=None, num_thread=0, **kwargs):
     """
     Entry of SAFE analysis
     Map sample meta-data to node associated values (using means),

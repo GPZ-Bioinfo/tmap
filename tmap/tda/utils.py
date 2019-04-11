@@ -8,7 +8,8 @@ import plotly.io as pio
 from pandas.api.types import is_categorical_dtype
 from sklearn.neighbors import *
 from sklearn.preprocessing import maxabs_scale
-
+from multiprocessing import Manager, Process, cpu_count
+from tqdm import tqdm
 
 def optimize_dbscan_eps(data, threshold=90, dm=None):
     if dm is not None:
@@ -151,23 +152,69 @@ def output_fig(fig, output, mode):
     else:
         raise Exception("Unknown type or Unknown suffix of filename")
 
-def batch_iter(iter,num_batch):
+
+def batch_iter(iter, num_batch):
     n_iter = []
     idx = []
     num_iter = len(iter)
-    batch_size = num_iter//num_batch
+    batch_size = num_iter // num_batch
     batch_d = 0
-    for batch_u in range(0 , num_iter+batch_size , batch_size):
+    for batch_u in range(0, num_iter + batch_size, batch_size):
         if batch_u != 0:
             n_iter.append(iter[batch_d:batch_u])
-            idx.append((batch_d,batch_u))
+            idx.append((batch_d, batch_u))
         batch_d = batch_u
     if len(n_iter) > num_batch:
-        final_v = [_ for v in n_iter[num_batch-1:] for _ in v]
+        final_v = [_ for v in n_iter[num_batch - 1:] for _ in v]
         n_iter = n_iter[:num_batch]
         n_iter[-1] = final_v
     return n_iter
 
+
+
+def parallel_works(func, args, n_iter, num_thread, verbose=1):
+    """
+    parallel func which doesn't use different params. Each run of func is independent.
+    With progress bar(tqdm)
+    :param func: last two params must be sub_i, q. first is the iteration times, second is the shared list to stodge result.
+    :param args: params passed to func.
+    :param n_iter: total iteration times.
+    :param num_thread: number of threads.
+    :param verbose: verbose of this function
+    :return:
+    """
+    pbar = None
+    if verbose:
+        pbar = tqdm(total=n_iter)
+    # initiate a progress bar according verbose
+    if num_thread == 0:
+        # if number of thread equal to 0, then use all threads of computer.
+        num_thread = cpu_count()
+    chunks = batch_iter(range(n_iter), num_thread)
+    # split total iteration times into a list which contains `num_thread` list contains almost same number.(could be simple)
+    # but for more robust `batch_iter2`, it make a little complicated.
+    manager = Manager()
+    q = manager.list()
+    # create a shared list between processes used to stodge results
+    for _ in chunks:
+        p = Process(target=func,
+                    args=(*args,
+                          len(_),
+                          q))
+        p.daemon = True
+        p.start()
+
+    while 1:
+        # check all processes has been complete. like .join()
+        # and also used to update pbar
+        if pbar:
+            pbar.update(len(q) - pbar.n)
+        if len(q) == n_iter:
+            if pbar:
+                pbar.update(n_iter - pbar.n)
+            break
+            # jump out the while loop until length of q equal to the total iteration times.
+    return q
 #
 # def dump_graph(graph, path, method='pickle'):
 #     # method must one of 'pickle' or 'json'.
