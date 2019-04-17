@@ -15,7 +15,7 @@ To install tmap, run:
     cd tmap
     python setup.py install
     # For some dependency problems. please install following packages.
-    pip install scikit-bio,psutil
+    pip install scikit-bio
     R -e "install.packages('vegan',repo='http://cran.rstudio.com/')"
 ```
 
