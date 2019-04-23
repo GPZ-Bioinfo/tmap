@@ -1,10 +1,12 @@
 import time
+from multiprocessing import Process, Queue,cpu_count
 
 import numpy as np
 import pandas as pd
 from statsmodels.sandbox.stats.multicomp import multipletests
+from tqdm import tqdm
 
-from tmap.tda.utils import verify_metadata, unify_data, parallel_works
+from tmap.tda.utils import verify_metadata, unify_data
 
 
 def _permutation(data, graph=None, shuffle_by='node'):
@@ -56,16 +58,21 @@ def convertor(compared_count, n_iter):
     return safe_scores
 
 
-def PandC(graph, shuffle_by, _p_data, ori_v, neighborhoods, agg_mode, sub_i, q):
+def worker(input, output):
+    for func, args in iter(input.get, 'STOP'):
+        result = func(*args)
+        output.put(result)
+
+
+def PandC(graph, shuffle_by, _p_data, ori_v, neighborhoods, agg_mode):
     # use independent function to perform permutation.
     np.random.seed(int(time.time() % 1e6))
-    for _ in range(sub_i):
-        p_data = _permutation(_p_data, graph=graph, shuffle_by=shuffle_by)  # it should provide the raw metadata instead of transformed data.
-        p_neighborhood_scores = graph.neighborhood_score(node_data=p_data, neighborhoods=neighborhoods, mode=agg_mode)
-        _1 = p_neighborhood_scores.values
-        enrich = _1 >= ori_v
-        decline = _1 <= ori_v
-        q.append((enrich, decline))
+    p_data = _permutation(_p_data, graph=graph, shuffle_by=shuffle_by)  # it should provide the raw metadata instead of transformed data.
+    p_neighborhood_scores = graph.neighborhood_score(node_data=p_data, neighborhoods=neighborhoods, mode=agg_mode)
+    _1 = p_neighborhood_scores.values
+    enrich = _1 >= ori_v
+    decline = _1 <= ori_v
+    return (enrich, decline)
 
 
 def _SAFE(graph, data, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffle_by="node", _mode='enrich', agg_mode='sum', num_thread=0, verbose=1):
@@ -97,21 +104,36 @@ def _SAFE(graph, data, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffl
                                                    mode=agg_mode)
     ori_v = neighborhood_scores.values
 
+    neighborhood_enrichments = np.zeros(ori_v.shape)
+    neighborhood_decline = np.zeros(ori_v.shape)
+
     _p_data = node_data.copy() if shuffle_by == 'node' else data.copy()
+    if num_thread <= 0:
+        num_thread = cpu_count()
+    TASKS = [(PandC, (graph,
+                      shuffle_by,
+                      _p_data,
+                      ori_v,
+                      neighborhoods,
+                      agg_mode)) for _ in range(n_iter)]
+    # init n_iter params
+    task_queue = Queue()
+    done_queue = Queue()
+    for task in TASKS:
+        task_queue.put(task)
+    # put the params into a queue
 
-    results = parallel_works(func=PandC,
-                             args=(graph,
-                                   shuffle_by,
-                                   _p_data,
-                                   ori_v,
-                                   neighborhoods,
-                                   agg_mode),
-                             n_iter=n_iter,
-                             num_thread=num_thread,
-                             verbose=verbose)
+    # Start worker processes
+    for _ in range(num_thread):
+        Process(target=worker, args=(task_queue, done_queue)).start()
 
-    neighborhood_enrichments = np.sum([_[0] for _ in results], axis=0)
-    neighborhood_decline = np.sum([_[1] for _ in results], axis=0)
+    for _ in tqdm(range(len(TASKS))):
+        _enrich, _decline = done_queue.get()
+        neighborhood_enrichments += _enrich
+        neighborhood_decline += _decline
+
+    for _ in range(num_thread):
+        task_queue.put('STOP')
 
     neighborhood_enrichments = pd.DataFrame(neighborhood_enrichments,
                                             index=list(graph.nodes),
