@@ -56,7 +56,7 @@ def convertor(compared_count, n_iter):
     return safe_scores
 
 
-def PandC(graph, shuffle_by, _p_data, ori_v, neighborhoods, agg_mode, sub_i, q):
+def PandC(graph, shuffle_by, _p_data, ori_v, neighborhoods, agg_mode, sub_i, q1, q2):
     # use independent function to perform permutation.
     np.random.seed(int(time.time() % 1e6))
     for _ in range(sub_i):
@@ -65,7 +65,8 @@ def PandC(graph, shuffle_by, _p_data, ori_v, neighborhoods, agg_mode, sub_i, q):
         _1 = p_neighborhood_scores.values
         enrich = _1 >= ori_v
         decline = _1 <= ori_v
-        q.append((enrich, decline))
+        q1.append((enrich,decline))
+        q2.append(0)
 
 
 def _SAFE(graph, data, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffle_by="node", _mode='enrich', agg_mode='sum', num_thread=0, verbose=1):
@@ -99,19 +100,16 @@ def _SAFE(graph, data, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffl
 
     _p_data = node_data.copy() if shuffle_by == 'node' else data.copy()
 
-    results = parallel_works(func=PandC,
-                             args=(graph,
-                                   shuffle_by,
-                                   _p_data,
-                                   ori_v,
-                                   neighborhoods,
-                                   agg_mode),
-                             n_iter=n_iter,
-                             num_thread=num_thread,
-                             verbose=verbose)
-
-    neighborhood_enrichments = np.sum([_[0] for _ in results], axis=0)
-    neighborhood_decline = np.sum([_[1] for _ in results], axis=0)
+    neighborhood_enrichments, neighborhood_decline = parallel_works(func=PandC,
+                                                                    args=(graph,
+                                                                          shuffle_by,
+                                                                          _p_data,
+                                                                          ori_v,
+                                                                          neighborhoods,
+                                                                          agg_mode),
+                                                                    n_iter=n_iter,
+                                                                    num_thread=num_thread,
+                                                                    verbose=verbose)
 
     neighborhood_enrichments = pd.DataFrame(neighborhood_enrichments,
                                             index=list(graph.nodes),
