@@ -198,8 +198,8 @@ class PCOA(Filters):
         components: The axis of projection. If you use components 0 and 1, this is [0, 1].
     """
 
-    def __init__(self, metric=Metric(metric="euclidean"), **kwds):
-        super(PCOA, self).__init__()
+    def __init__(self, components=[0, 1],metric=Metric(metric="euclidean"), **kwds):
+        super(PCOA, self).__init__(components=components, metric=metric)
         self.metric = metric
 
     def fit_transform(self, data):

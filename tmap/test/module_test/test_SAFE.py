@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 from scipy.spatial.distance import squareform, pdist
 from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import MinMaxScaler

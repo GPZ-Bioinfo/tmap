@@ -11,7 +11,7 @@ from pandas.api.types import is_categorical_dtype
 from sklearn.neighbors import *
 from sklearn.preprocessing import maxabs_scale
 from tqdm import tqdm
-
+import random
 
 def optimize_dbscan_eps(data, threshold=90, dm=None):
     if dm is not None:
@@ -174,7 +174,7 @@ def batch_iter(iter, num_batch):
 
 
 
-def parallel_works(func, args, n_iter, num_thread, verbose=1):
+def parallel_works(func, args, n_iter, num_thread, verbose=1,random_seed=None):
     """
     parallel func which doesn't use different params. Each run of func is independent.
     With progress bar(tqdm)
@@ -201,12 +201,16 @@ def parallel_works(func, args, n_iter, num_thread, verbose=1):
     tmp_sto = manager.list()
     iter_count = manager.list()
     # create a shared list between processes used to stodge results
+    if random_seed is not None:
+        random.seed(random_seed)
     for _ in chunks:
+        seed = random.randrange(1,1e6)
         p = Process(target=func,
                     args=(*args,
                           len(_),
                           tmp_sto,
-                          iter_count
+                          iter_count,
+                          seed
                           ))
         p.daemon = True
         p.start()

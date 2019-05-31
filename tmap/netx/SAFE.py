@@ -56,9 +56,13 @@ def convertor(compared_count, n_iter):
     return safe_scores
 
 
-def PandC(graph, shuffle_by, _p_data, ori_v, neighborhoods, agg_mode, sub_i, q1, q2):
+def PandC(graph, shuffle_by, _p_data, ori_v, neighborhoods, agg_mode, sub_i, q1, q2,random_seed=None):
     # use independent function to perform permutation.
-    np.random.seed(int(time.time() % 1e6))
+    if random_seed is not None:
+        np.random.seed(random_seed)
+    else:
+        np.random.seed(int(time.time() % 1e6))
+    # todo: is it a corrected way?
     for _ in range(sub_i):
         p_data = _permutation(_p_data, graph=graph, shuffle_by=shuffle_by)  # it should provide the raw metadata instead of transformed data.
         p_neighborhood_scores = graph.neighborhood_score(node_data=p_data, neighborhoods=neighborhoods, mode=agg_mode)
@@ -66,10 +70,11 @@ def PandC(graph, shuffle_by, _p_data, ori_v, neighborhoods, agg_mode, sub_i, q1,
         enrich = _1 >= ori_v
         decline = _1 <= ori_v
         q1.append((enrich,decline))
+        # adding result
         q2.append(0)
+        # adding 0 for counter and stop
 
-
-def _SAFE(graph, data, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffle_by="node", _mode='enrich', agg_mode='sum', num_thread=0, verbose=1):
+def _SAFE(graph, data, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffle_by="node", _mode='enrich', agg_mode='sum', num_thread=0, verbose=1,random_seed=None):
     """
     perform SAFE analysis by node permutations
 
@@ -109,7 +114,8 @@ def _SAFE(graph, data, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffl
                                                                           agg_mode),
                                                                     n_iter=n_iter,
                                                                     num_thread=num_thread,
-                                                                    verbose=verbose)
+                                                                    verbose=verbose,
+                                                                    random_seed=random_seed)
 
     neighborhood_enrichments = pd.DataFrame(neighborhood_enrichments,
                                             index=list(graph.nodes),
@@ -130,7 +136,7 @@ def _SAFE(graph, data, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffl
         return safe_scores_decline
 
 
-def SAFE_batch(graph, metadata, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffle_by="node", _mode='enrich', agg_mode='sum', verbose=1, name=None, num_thread=0, **kwargs):
+def SAFE_batch(graph, metadata, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffle_by="node", _mode='enrich', agg_mode='sum', verbose=1, name=None, num_thread=0, random_seed=None,**kwargs):
     """
     Entry of SAFE analysis
     Map sample meta-data to node associated values (using means),
@@ -165,7 +171,8 @@ def SAFE_batch(graph, metadata, n_iter=1000, nr_threshold=0.5, neighborhoods=Non
                             agg_mode=agg_mode,
                             shuffle_by=shuffle_by,
                             verbose=verbose,
-                            num_thread=num_thread)
+                            num_thread=num_thread,
+                            random_seed=random_seed)
 
     # record SAFE params
     _params = {'shuffle_by': shuffle_by,
