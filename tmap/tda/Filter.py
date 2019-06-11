@@ -131,6 +131,9 @@ class PCA(Filters):
         self.axis = self.pca.components_[self.components, :]
         return projected_data[:, self.components]
 
+    def get_explained_ratio(self):
+        return self.pca.explained_variance_ratio_()
+
 
 class TSNE(Filters):
     """
@@ -163,7 +166,7 @@ class TSNE(Filters):
 class MDS(Filters):
     """
     MDS filters.
-    Implements with sklearn.maniford.MDS
+    Implements with sklearn.manifold.MDS
     Params:
         components: The axis of projection. If you use components 0 and 1, this is [0, 1].
     """
@@ -187,6 +190,7 @@ class MDS(Filters):
             data = self.metric.fit_transform(data)
         projected_data = self.mds.fit_transform(data)
         return projected_data[:, self.components]
+
 
 
 class PCOA(Filters):
@@ -217,6 +221,9 @@ class PCOA(Filters):
         projected_data = pcoa(data)
         self.pcoa = projected_data
         return self.pcoa.samples.values[:, self.components]
+
+    def get_explained_ratio(self):
+        return self.pcoa.proportion_explained.values
 
 
 class UMAP(Filters):
