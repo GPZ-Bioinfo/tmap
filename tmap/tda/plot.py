@@ -469,7 +469,7 @@ def vis_progressX(graph, simple=False, mode='file', color=None, _color_SAFE=None
     # prepare edge data
     xs = []
     ys = []
-    if node_pos.shape[1] <=2:
+    if node_pos.shape[1] < 2:
         raise Exception("using first two axis as original position, there is only one filter")
     # todo: init some more robust way to draw network
     for edge in graph.edges:
