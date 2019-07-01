@@ -67,7 +67,7 @@ setup(name='tmap',
                         'scipy',
                         'matplotlib!=3.0.0rc2',
                         'umap-learn',
-                        'rpy2',
+                        #'rpy2',
                         'plotly',
                         'numpy'
                         ],
