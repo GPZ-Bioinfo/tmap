@@ -87,8 +87,11 @@ def transform2node_data(graph, data, mode='mean'):
     data = unify_data(data)
     dv = data.values
     if data is not None:
-        node_data = {nid: aggregated_fun(dv[attr['sample'], :], 0) for nid, attr in nodes.items()}
-        node_data = pd.DataFrame.from_dict(node_data, orient='index', columns=data.columns)
+        node_data = {nid: aggregated_fun(dv[attr['sample'], :], 0)
+                     for nid, attr in nodes.items()}
+        node_data = pd.DataFrame.from_dict(node_data,
+                                           orient='index',
+                                           columns=data.columns)
         return node_data
 
 

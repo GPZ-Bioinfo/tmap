@@ -117,7 +117,8 @@ class Mapper(object):
         if clusterer.metric == "precomputed":
             assert data_vals.shape[0] == data_vals.shape[1]
 
-        for cube in _iteration:
+        cube2node = {}
+        for cube_id,cube in enumerate(_iteration):
             if clusterer.metric != "precomputed":
                 cube_data = data_vals[cube]
             else:
@@ -129,6 +130,7 @@ class Mapper(object):
                 raw_point_mask[cube_data_idx] = True
                 if (clusterer is not None) and ("fit" in dir(clusterer)):
                     clusterer.fit(cube_data)
+                    cube2node[cube_id] = []
                     for label in np.unique(clusterer.labels_):
                         # the "-1" label is used for "un-clustered" points!!!
                         if label != -1:
@@ -137,6 +139,7 @@ class Mapper(object):
                             nodes[node_id] = point_mask
                             raw_nodes[node_id] = raw_point_mask
                             node_id += 1
+                            cube2node[cube_id].append(node_id)
 
                 else:
                     # assumed to have a whole cluster of cubes!!!
@@ -173,7 +176,9 @@ class Mapper(object):
 
         node_ids = nodes.keys()
 
-        edges = [edge for edge in itertools.combinations(node_ids, 2) if np.any(nodes[edge[0]] & nodes[edge[1]])]
+        edges = [edge
+                 for edge in itertools.combinations(node_ids, 2)
+                 if np.any(nodes[edge[0]] & nodes[edge[1]])]
         # edges_df = pd.DataFrame(columns=['Source', 'End'], data=np.array(edges))
         # adj_matrix = pd.crosstab(edges_df.Source, edges_df.End)
         # adj_matrix = adj_matrix.reindex(index=node_ids, columns=node_ids).replace(0, np.nan)
@@ -204,6 +209,7 @@ class Mapper(object):
         graph._add_node(nodes)
         graph._add_edge(edges)
         graph._add_node_pos(node_positions)
+        graph._add_cube2node(cube2node)
         graph._record_params({'clusterer': clusterer,
                               'cover': cover,
                               'lens': self.lens,
