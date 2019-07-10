@@ -118,7 +118,7 @@ class Mapper(object):
             assert data_vals.shape[0] == data_vals.shape[1]
 
         cube2node = {}
-        for cube_id,cube in enumerate(_iteration):
+        for cube_id, cube in enumerate(_iteration):
             if clusterer.metric != "precomputed":
                 cube_data = data_vals[cube]
             else:
@@ -138,8 +138,9 @@ class Mapper(object):
                             point_mask[cube_data_idx[clusterer.labels_ == label]] = True
                             nodes[node_id] = point_mask
                             raw_nodes[node_id] = raw_point_mask
-                            node_id += 1
                             cube2node[cube_id].append(node_id)
+                            node_id += 1
+
 
                 else:
                     # assumed to have a whole cluster of cubes!!!
