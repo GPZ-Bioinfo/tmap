@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
 
+from multiprocessing import Process, cpu_count,Manager
+from multiprocessing.sharedctypes import Array, Value
 import numpy as np
 import pandas as pd
 import plotly
@@ -8,7 +10,8 @@ import plotly.io as pio
 from pandas.api.types import is_categorical_dtype
 from sklearn.neighbors import *
 from sklearn.preprocessing import maxabs_scale
-
+from tqdm import tqdm
+import random
 
 def optimize_dbscan_eps(data, threshold=90, dm=None):
     if dm is not None:
@@ -84,8 +87,11 @@ def transform2node_data(graph, data, mode='mean'):
     data = unify_data(data)
     dv = data.values
     if data is not None:
-        node_data = {nid: aggregated_fun(dv[attr['sample'], :], 0) for nid, attr in nodes.items()}
-        node_data = pd.DataFrame.from_dict(node_data, orient='index', columns=data.columns)
+        node_data = {nid: aggregated_fun(dv[attr['sample'], :], 0)
+                     for nid, attr in nodes.items()}
+        node_data = pd.DataFrame.from_dict(node_data,
+                                           orient='index',
+                                           columns=data.columns)
         return node_data
 
 
@@ -150,6 +156,86 @@ def output_fig(fig, output, mode):
         plotly.offline.plot(fig, filename=output, auto_open=False)
     else:
         raise Exception("Unknown type or Unknown suffix of filename")
+
+
+def batch_iter(iter, num_batch):
+    n_iter = []
+    idx = []
+    num_iter = len(iter)
+    batch_size = num_iter // num_batch
+    batch_d = 0
+    for batch_u in range(0, num_iter + batch_size, batch_size):
+        if batch_u != 0:
+            n_iter.append(iter[batch_d:batch_u])
+            idx.append((batch_d, batch_u))
+        batch_d = batch_u
+    if len(n_iter) > num_batch:
+        final_v = [_ for v in n_iter[num_batch - 1:] for _ in v]
+        n_iter = n_iter[:num_batch]
+        n_iter[-1] = final_v
+    return n_iter
+
+
+
+def parallel_works(func, args, n_iter, num_thread, verbose=1,random_seed=None):
+    """
+    parallel func which doesn't use different params. Each run of func is independent.
+    With progress bar(tqdm)
+    :param func: last two params must be sub_i, q. first is the iteration times, second is the shared list to stodge result.
+    :param args: params passed to func.
+    :param n_iter: total iteration times.
+    :param num_thread: number of threads.
+    :param verbose: verbose of this function
+    :return:
+    """
+    pbar = None
+    if verbose:
+        pbar = tqdm(total=n_iter)
+    # initiate a progress bar according verbose
+    if num_thread == 0:
+        # if number of thread equal to 0, then use all threads of computer.
+        num_thread = cpu_count()
+    chunks = batch_iter(range(n_iter), num_thread)
+    # split total iteration times into a list which contains `num_thread` list contains almost same number.(could be simple)
+    # but for more robust `batch_iter2`, it make a little complicated.
+    result = (np.zeros(args[3].shape), np.zeros(args[3].shape))
+
+    manager = Manager()
+    tmp_sto = manager.list()
+    iter_count = manager.list()
+    # create a shared list between processes used to stodge results
+    if random_seed is not None:
+        random.seed(random_seed)
+    for _ in chunks:
+        seed = random.randrange(1,1e6)
+        p = Process(target=func,
+                    args=(*args,
+                          len(_),
+                          tmp_sto,
+                          iter_count,
+                          seed
+                          ))
+        p.daemon = True
+        p.start()
+
+    while 1:
+        # check all processes has been complete. like .join()
+        # and also used to update pbar
+        if pbar:
+            pbar.update(len(iter_count) - pbar.n)
+        if len(iter_count) == n_iter:
+            if pbar:
+                pbar.update(n_iter - pbar.n)
+                # not break the while loop (in case result doesn't capture all)
+                # until length of q equal to the total iteration times.
+        try:
+            _e, _d = tmp_sto.pop(0)
+            result[0] += _e
+            result[1] += _d
+        except:
+            if len(iter_count) == n_iter:
+                break
+    return result
 
 
 #

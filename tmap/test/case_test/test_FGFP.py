@@ -48,7 +48,6 @@ color = Color(target=X.loc[:, target_feature], dtype="numerical", target_by="sam
 graph.show(color=color,
            fig_size=(10, 10),
            node_size=15,
-
            notshow=True)
 
 # colors by nodes (target values in a dictionary)

@@ -226,7 +226,7 @@ class Color(object):
         :param dict nodes: nodes from graph
         :param cmap: not implemented yet...For now, it only accept manual assigned dict like {sample1:color1,sample2:color2.....}
         :return: nodes colors with keys, and the color map of the target values
-        :rtype: tuple (first is a dict node_ID:node_color, second is a tuple (node_ID_index,node_color))
+        :rtype: tuple (first is a list samples_colors, second is a tuple (node_ID_index,node_color))
         """
         cat2color = {}
 
@@ -469,6 +469,9 @@ def vis_progressX(graph, simple=False, mode='file', color=None, _color_SAFE=None
     # prepare edge data
     xs = []
     ys = []
+    if node_pos.shape[1] < 2:
+        raise Exception("using first two axis as original position, there is only one filter")
+    # todo: init some more robust way to draw network
     for edge in graph.edges:
         xs += [node_pos[edge[0], 0],
                node_pos[edge[1], 0],
