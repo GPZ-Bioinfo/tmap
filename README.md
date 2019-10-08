@@ -30,7 +30,7 @@ After clone the repositories, you could use `cd tmap; docker build -t tmap .`
 
 If you encounter any error like `Import error: tkinter`, you need to run `sudo apt install python-tk` or `sudo apt install python3-tk`.
 
-# *tmap* Documentation
+# Documentation
 
 * [Basic Usage of tmap](https://tmap.readthedocs.io/en/latest/basic.html)
 * [How to Choose Parameters in tmap](https://tmap.readthedocs.io/en/latest/param.html)
@@ -43,7 +43,7 @@ If you encounter any error like `Import error: tkinter`, you need to run `sudo a
 * [Reference](https://tmap.readthedocs.io/en/latest/reference.html)
 * [FAQ](https://tmap.readthedocs.io/en/latest/FAQ.html)
 
-# *tmap* Quick Guides
+# Quick Guides
 
 You can read the [Basic Usage of tmap](https://tmap.readthedocs.io/en/latest/basic.html) for general use of tmap.
 Or follow the [Microbiome examples](https://tmap.readthedocs.io/en/latest/example.html) for using tmap in microbiome analysis.
@@ -51,7 +51,7 @@ Or follow the [Microbiome examples](https://tmap.readthedocs.io/en/latest/exampl
 For more convenient usage, we implement some executable scripts which will automatically build upon `$PATH`. For more information about these scripts, you could see.
 [Tutorial of executable scripts](https://tmap.readthedocs.io/en/latest/scripts.html)
 
-# *tmap* Publication
+# Publication
 
 # Contact Us
 If you have any questions or suggestions, you are welcome to contact us via email: haokui.zhou@gmail.com.
