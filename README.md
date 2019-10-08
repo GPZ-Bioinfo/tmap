@@ -6,7 +6,7 @@ Topological data analysis (TDA) provides a promising technique for analyzing lar
 
 ***tmap*** is a topological data analysis framework implementing the TDA *Mapper* algorithm for population-scale microbiome data analysis. We developed ***tmap*** to enable easy adoption of TDA in microbiome data analysis pipeline, providing network-based statistical methods for enterotype analysis, driver species identification, and microbiome-wide association analysis of host meta-data.
 
-# How to Install *tmap*?
+# How to Install?
 
 To install tmap, run:
 ```bash
