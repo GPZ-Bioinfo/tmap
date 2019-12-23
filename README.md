@@ -52,7 +52,7 @@ For more convenient usage, we implement some executable scripts which will autom
 [Tutorial of executable scripts](https://tmap.readthedocs.io/en/latest/scripts.html)
 
 # Publication
-Tianhua Liao, Yuchen Wei, Mingjing Luo, Guo-Ping Zhao, Haokui Zhou. *tmap*: an integrative framework based on topological data analysis for population-scale microbiome stratification and association studies. Geonome Biology (2019), doi: 10.1186/s13059-019-1871-4 (*in press*)
+Tianhua Liao, Yuchen Wei, Mingjing Luo, Guo-Ping Zhao, Haokui Zhou. *tmap*: an integrative framework based on topological data analysis for population-scale microbiome stratification and association studies. Geonome Biology (2019), [doi: 10.1186/s13059-019-1871-4](https://doi.org/10.1186/s13059-019-1871-4)
 
 # Contact Us
 If you have any questions or suggestions, you are welcome to contact us via email: haokui.zhou@gmail.com.
