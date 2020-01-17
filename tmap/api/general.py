@@ -89,8 +89,8 @@ def process_metadata_beta(data, metadata, drop_threshold=0.6, verbose=1):
         sub_str = sub_str.loc[:, sub_str.columns.difference(drop_cols)]
         if sub_str.shape[1] != 0:
             sub_str = pd.get_dummies(sub_str)
-        drop_cols += list(sub_str.columns[sub_str.sum(0) <= sub_str.shape[0] * drop_threshold])
-        sub_str = sub_str.loc[:, sub_str.sum(0) <= sub_str.shape[0] * drop_threshold]
+        # drop_cols += list(sub_str.columns[sub_str.sum(0) <= sub_str.shape[0] * drop_threshold])
+        # sub_str = sub_str.loc[:, sub_str.sum(0) <= sub_str.shape[0] * drop_threshold]
         logger('drop cols which is meanless or too much values', ','.join(drop_cols), '\n\n', verbose=verbose)
     # merge and output
     if sub_numeric.shape[1] == 0 and sub_str.shape[1] == 0:
