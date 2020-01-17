@@ -69,7 +69,8 @@ setup(name='tmap',
                         'umap-learn',
                         'rpy2',
                         'plotly',
-                        'numpy'
+                        'numpy',
+                        'psutil'
                         ],
       cmdclass=cmdclass,
       classifiers=[
