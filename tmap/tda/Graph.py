@@ -29,7 +29,7 @@ class Graph(nx.Graph):
             """
             Graph {name}
             Contains {num_n} nodes and {num_s} samples
-            During constructing graph, {loss_n} ({loss_p}%) samples lost
+            During graph generating process, {loss_n} samples lost, {loss_p}% samples remain
             
             Used params: 
             {str_p}

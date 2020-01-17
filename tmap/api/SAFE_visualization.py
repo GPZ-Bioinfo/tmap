@@ -61,7 +61,7 @@ def draw_PCOA(rawdatas, summary_datas, output, mode='html', width=1500, height=1
                              name='name for searching',
                              showlegend=False,
                              textfont=dict(size=13),
-                             text=top10_feas))
+                             text=safe_df.columns[safe_df.columns.isin(top10_feas)]))
 
     fig.layout.update(dict(xaxis=dict(title="PC1({:.2f}%)".format(pca.explained_variance_ratio_[0] * 100)),
                            yaxis=dict(title="PC2({:.2f}%)".format(pca.explained_variance_ratio_[1] * 100)),

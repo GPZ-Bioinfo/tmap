@@ -19,7 +19,7 @@ def logger(*args, verbose=0):
 def process_output(output):
     dir_path = os.path.dirname(os.path.realpath(output))
     if not os.path.isdir(dir_path):
-        logger("There are not %s" % dir_path, "Now created.....")
+        logger("There is no %s" % dir_path, "Now created.....")
         os.makedirs(dir_path)
 
 
@@ -52,8 +52,8 @@ def data_parser(path, ft='csv', verbose=1, **kwargs):
             df = pd.read_excel(path, index_col=0, header=0, **kwargs)
         logger('Input data path: ', path, verbose=verbose)
     logger('Shape of Input data: ', df.shape, verbose=verbose)
-    logger("Focus, this data means %s samples, and %s features. " % (str(df.shape[0]),
-                                                                     str(df.shape[1])), verbose=verbose)
+    logger("Note that Input data got %s samples and %s features. " % (str(df.shape[0]),
+                                                                      str(df.shape[1])), verbose=verbose)
     return df
 
 
@@ -74,7 +74,7 @@ def process_metadata_beta(data, metadata, drop_threshold=0.6, verbose=1):
         na_percent = sub_numeric.count(0) / sub_numeric.shape[0]
         drop_cols += list(sub_numeric.columns[na_percent <= drop_threshold])
         ### drop too much nan columns.
-        logger('drop cols which nan values is over %s percent : ' % drop_threshold, ','.join(drop_cols), '\n\n', verbose=verbose)
+        logger('drop cols with nan values over %s percent : ' % drop_threshold, ','.join(drop_cols), '\n\n', verbose=verbose)
         sub_numeric = sub_numeric.loc[:, na_percent > drop_threshold]
         sub_numeric = sub_numeric.fillna({col: sub_numeric.median()[col] for col in sub_numeric.columns})
     if str_cols:
@@ -91,11 +91,11 @@ def process_metadata_beta(data, metadata, drop_threshold=0.6, verbose=1):
             sub_str = pd.get_dummies(sub_str)
         drop_cols += list(sub_str.columns[sub_str.sum(0) <= sub_str.shape[0] * drop_threshold])
         sub_str = sub_str.loc[:, sub_str.sum(0) <= sub_str.shape[0] * drop_threshold]
-        logger('drop cols which is meanless or too much values', ','.join(drop_cols), '\n\n', verbose=verbose)
+        logger('drop cols which is meanless or have too much values', ','.join(drop_cols), '\n\n', verbose=verbose)
     # merge and output
     if sub_numeric.shape[1] == 0 and sub_str.shape[1] == 0:
         final_metadata = None
-        logger("No columns are survived.......", verbose=1)
+        logger("No columns survived.......", verbose=1)
     elif sub_str.shape[1] == 0:
         final_metadata = sub_numeric
     elif sub_numeric.shape[1] == 0:
