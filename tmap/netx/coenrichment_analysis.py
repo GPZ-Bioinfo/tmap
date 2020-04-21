@@ -147,7 +147,7 @@ def coenrichment_for_nodes(graph, nodes, enriched_centroid, name, safe_scores=No
         return global_correlative_feas, sub_correlative_feas, metainfo
     elif mode == 'global':
         return global_correlative_feas, metainfo
-    elif mode == 'global':
+    elif mode == 'local':
         return sub_correlative_feas, metainfo
     else:
         return

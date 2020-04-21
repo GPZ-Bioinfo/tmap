@@ -61,7 +61,7 @@ def draw_PCOA(rawdatas, summary_datas, output, mode='html', width=1500, height=1
                              name='name for searching',
                              showlegend=False,
                              textfont=dict(size=13),
-                             text=top10_feas))
+                             text=safe_df.columns[safe_df.columns.isin(top10_feas)]))
 
     fig.layout.update(dict(xaxis=dict(title="PC1({:.2f}%)".format(pca.explained_variance_ratio_[0] * 100)),
                            yaxis=dict(title="PC2({:.2f}%)".format(pca.explained_variance_ratio_[1] * 100)),
@@ -92,7 +92,7 @@ def draw_stratification(graph, SAFE_dict, cols, output, mode='html', n_iter=1000
         ys += [node_pos[edge[0], 1],
                node_pos[edge[1], 1],
                None]
-    fig = plotly.tools.make_subplots(1, 1)
+    fig = plotly.subplots.make_subplots(1, 1)
 
     node_line = go.Scatter(
         # ordination line
@@ -115,6 +115,11 @@ def draw_stratification(graph, SAFE_dict, cols, output, mode='html', n_iter=1000
     t = Counter(tmp)
     # number of (imp) features among all nodes. (imp: with biggest SAFE score per node compared other features at same node and bigger than p_val)
     if cols:
+        # get enriched features (from cols) with biggest SAFE_score per nodes
+        _sub_safe_score_df = safe_score_df[cols]
+        _t = Counter(
+            [_sub_safe_score_df.columns[_] if _sub_safe_score_df.iloc[idx, _] >= SAFE_pvalue else np.nan for idx, _ in enumerate(np.argmax(_sub_safe_score_df.values, axis=1))]
+        )
         if any([_ not in safe_score_df.columns for _ in cols]):
             logger("There are provided cols \" %s\"doesn't at SAFE summary table." % ';'.join(cols), verbose=1)
         for fea in cols:
@@ -128,8 +133,8 @@ def draw_stratification(graph, SAFE_dict, cols, output, mode='html', n_iter=1000
                 subfig.data[1]['name'] = fea
                 fig.append_trace(subfig.data[1], 1, 1)
             else:
-                get_nodes_bool = (safe_score_df.loc[:, fea] >= SAFE_pvalue).all()
-                if not get_nodes_bool:
+                get_nodes_bool = (safe_score_df.loc[:, fea] >= SAFE_pvalue).values
+                if not get_nodes_bool.any():
                     # if all False....
                     logger("fea: %s get all False bool indicated there are not enriched nodes showed at the graph" % fea, verbose=1)
                 else:
@@ -140,10 +145,10 @@ def draw_stratification(graph, SAFE_dict, cols, output, mode='html', n_iter=1000
                         y=node_pos[get_nodes_bool, 1],
                         hoverinfo="text",
                         marker=dict(  # color=node_colors,
-                            size=[sizes[_,0] for _ in np.arange(node_pos.shape[0])[get_nodes_bool]],
+                            size=[transformed_sizes[_] for _ in np.arange(node_pos.shape[0])[get_nodes_bool]],
                             opacity=0.9),
                         showlegend=True,
-                        name=str(fea) + ' (%s)' % str(t.get(fea, 0)),
+                        name=str(fea) + ' (%s)' % str(_t.get(fea, 0)),
                         mode="markers")
                     fig.append_trace(node_position, 1, 1)
     else:
@@ -299,7 +304,7 @@ if __name__ == '__main__':
                         type=int, default=1600)
     parser.add_argument("--height", help="The width of output picture",
                         type=int, default=1600)
-    parser.add_argument("--allnodes", help="draw all nodes with provided columns as color instead of enriched one. \nOnly useful for stratification",
+    parser.add_argument("--allnodes", help="draw all nodes with provided columns as color instead of enriched one. \nOnly useful for stratification & focusing on one specific feature",
                         action="store_true")
     args = parser.parse_args()
 
