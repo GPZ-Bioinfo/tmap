@@ -140,8 +140,6 @@ class Mapper(object):
                             raw_nodes[node_id] = raw_point_mask
                             cube2node[cube_id].append(node_id)
                             node_id += 1
-
-
                 else:
                     # assumed to have a whole cluster of cubes!!!
                     # it equals to the raw node2samples

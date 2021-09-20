@@ -45,9 +45,10 @@ def convertor(compared_count, n_iter):
     min_p_value = 1.0 / (n_iter + 1.0)
 
     neighborhood_count_df = compared_count
-
+    # index denote nodes in the graph, column denote features used in the SAFE generation
     p_value_df = neighborhood_count_df.div(n_iter)
-    p_value_df = p_value_df.where(p_value_df >= min_p_value, min_p_value)
+    p_value_df = p_value_df.where(p_value_df >= min_p_value, 
+                                  min_p_value)
 
     # todo: allow user to specify a multi-test correction method?
     p_values_fdr_bh = p_value_df.apply(lambda col: multipletests(col, method='fdr_bh')[1], axis=0)
@@ -67,14 +68,15 @@ def PandC(graph, shuffle_by, _p_data, ori_v, neighborhoods, agg_mode, sub_i, q1,
         p_data = _permutation(_p_data, graph=graph, shuffle_by=shuffle_by)  # it should provide the raw metadata instead of transformed data.
         p_neighborhood_scores = graph.neighborhood_score(node_data=p_data, neighborhoods=neighborhoods, mode=agg_mode)
         _1 = p_neighborhood_scores.values
-        enrich = _1 >= ori_v
-        decline = _1 <= ori_v
+        enrich = _1 > ori_v
+        decline = _1 < ori_v
         q1.append((enrich,decline))
         # adding result
         q2.append(0)
         # adding 0 for counter and stop
 
-def _SAFE(graph, data, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffle_by="node", _mode='enrich', agg_mode='sum', num_thread=0, verbose=1,random_seed=None):
+def _SAFE(graph, data, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffle_by="node", 
+          _mode='enrich', agg_mode='sum', num_thread=0, verbose=1,random_seed=None):
     """
     perform SAFE analysis by node permutations
 
@@ -136,7 +138,9 @@ def _SAFE(graph, data, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffl
         return safe_scores_decline
 
 
-def SAFE_batch(graph, metadata, n_iter=1000, nr_threshold=0.5, neighborhoods=None, shuffle_by="node", _mode='enrich', agg_mode='sum', verbose=1, name=None, num_thread=0, random_seed=None,**kwargs):
+def SAFE_batch(graph, metadata, n_iter=1000, nr_threshold=0.5, 
+               neighborhoods=None, shuffle_by="node", _mode='enrich', agg_mode='sum', verbose=1, 
+               name=None, num_thread=0, random_seed=None,**kwargs):
     """
     Entry of SAFE analysis
     Map sample meta-data to node associated values (using means),

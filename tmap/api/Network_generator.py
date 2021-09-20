@@ -1,4 +1,4 @@
-#! /usr/bin/python3
+#!/usr/bin/env python
 from scipy.spatial.distance import squareform, pdist
 from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import MinMaxScaler

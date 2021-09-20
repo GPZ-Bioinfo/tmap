@@ -50,9 +50,9 @@ def coenrichment_for_nodes(graph, nodes, enriched_centroid, name, safe_scores=No
     o_f_non-enriched_nodes   s3                                s4
     ======================== ================================= =================================
 
-    For convenient calculation, three different mode [both|global|local] could be choose.
+    For convenient calculation, three different modes [both|global|local] could be selected.
 
-    Output objects contain two different kinds of dictionary. One dict is recording the correlation information between different features, the other is recording the raw contingency table info between each comparsion which is a list of nodes representing s1,s2,s3,s4.
+    Output objects contain two kinds of dictionary. One is recording the correlation information between different features, the other is recording the raw contingency table info between each comparsion which is a list of nodes representing s1,s2,s3,s4.
 
     If mode equals to 'both', it will output global correlative dict, local correlative, metainfo.
     If mode equals to 'global', it will output local correlative, metainfo.
