@@ -235,6 +235,8 @@ def parallel_works(func, args, n_iter, num_thread, verbose=1,random_seed=None):
         except:
             if len(iter_count) == n_iter:
                 break
+    if pbar:
+        pbar.close()
     return result
 
 
