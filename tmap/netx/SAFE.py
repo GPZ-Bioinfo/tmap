@@ -67,9 +67,13 @@ def PandC(graph, shuffle_by, _p_data, ori_v, neighborhoods, agg_mode, sub_i, q1,
     for _ in range(sub_i):
         p_data = _permutation(_p_data, graph=graph, shuffle_by=shuffle_by)  # it should provide the raw metadata instead of transformed data.
         p_neighborhood_scores = graph.neighborhood_score(node_data=p_data, neighborhoods=neighborhoods, mode=agg_mode)
-        _1 = p_neighborhood_scores.values
-        enrich = _1 > ori_v
-        decline = _1 < ori_v
+        shuffled_v = p_neighborhood_scores.values
+        
+        enrich = (shuffled_v > ori_v) | ((ori_v == 0) & (ori_v == shuffled_v) )
+        decline = (shuffled_v < ori_v) | ((ori_v == 0) & (ori_v == shuffled_v) )
+        # The disagreement of the enrichment would be counted if 
+        # 1. shuffled values larger than the original values
+        # 2. both original values and the shuffled values are equal to 0 (this should be take into account since it might have lots of empty value in application.)
         q1.append((enrich,decline))
         # adding result
         q2.append(0)
