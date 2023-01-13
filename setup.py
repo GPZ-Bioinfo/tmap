@@ -69,7 +69,7 @@ setup(name='tmap',
                         'umap-learn',
                         #'rpy2',
                         'plotly',
-                        'numpy',
+                        'numpy==1.23.5',
                         'psutil'
                         ],
       cmdclass=cmdclass,
