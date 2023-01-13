@@ -412,7 +412,7 @@ def vis_progressX(graph, simple=False, mode='file', color=None, _color_SAFE=None
 
     sample_names = np.array(graph.sample_names.astype(str))
     minmax_scaler = MinMaxScaler(feature_range=(min_size, max_size))
-    mms_color = MinMaxScaler(feature_range=[0, 1])
+    mms_color = MinMaxScaler(feature_range=(0, 1))
 
     scaled_size = minmax_scaler.fit_transform(np.array([sizes[_] for _ in range(len(nodes))]).reshape(-1, 1))
 
