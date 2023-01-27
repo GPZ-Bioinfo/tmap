@@ -23,6 +23,7 @@ class Graph(nx.Graph):
         self.all_spath = None
         self.weight = None
         self._SAFE = []
+        self._cube2node = {}
 
     def info(self):
         description = \
@@ -37,7 +38,7 @@ class Graph(nx.Graph):
                        num_n=len(self.nodes),
                        num_s=len(self.remaining_samples),
                        loss_n=self.rawX.shape[0] - len(self.remaining_samples),
-                       loss_p=round(self.cover_ratio(), 4) * 100,
+                       loss_p=100 - round(self.cover_ratio(), 4) * 100,
                        str_p=self.params
                        )
         description = '\n'.join([_.strip(' ') for _ in description.split('\n')])
@@ -108,7 +109,7 @@ class Graph(nx.Graph):
     def samples_neighbors(self, sample_name, nr_threshold=0.5):
         """
         provide single, if dropped samples, will print error message.
-        provide multiple samples, if one of them iss dropped, it won't print error message. Please be careful by yourself.
+        provide multiple samples, if one of them be dropped, it won't print error message. Please be careful by yourself.
         :param sample_name: name or index of samples, could be multiple or single
         :param nr_threshold:
         :return:
@@ -365,6 +366,8 @@ class Graph(nx.Graph):
         :return:
         """
         self.cal_params.update(params)
+    def _add_cube2node(self,cube2node):
+        self.__cube2node = cube2node
 
     def _add_safe(self, params):
         self._SAFE.append(params)
@@ -432,6 +435,10 @@ class Graph(nx.Graph):
         cover = self.cal_params['cover']
         cubes = cover.hypercubes
         return cubes
+
+    @property
+    def cube2node(self):
+        return self.__cube2node
 
     @property
     def params(self):

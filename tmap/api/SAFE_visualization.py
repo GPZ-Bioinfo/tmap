@@ -92,7 +92,8 @@ def draw_stratification(graph, SAFE_dict, cols, output, mode='html', n_iter=1000
         ys += [node_pos[edge[0], 1],
                node_pos[edge[1], 1],
                None]
-    fig = plotly.subplots.make_subplots(1, 1)
+    from plotly.subplots import make_subplots
+    fig = make_subplots(1, 1)
 
     node_line = go.Scatter(
         # ordination line

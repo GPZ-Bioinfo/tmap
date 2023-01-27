@@ -101,15 +101,10 @@ class Mapper(object):
 
         # projection data & raw data should have a same number of points
         assert data.shape[0] == cover.n_points
-        if self.verbose >= 1:
-            print("Mapping on data %s using lens %s" %
-                  (str(data.shape), str(cover.data.shape)))
         # Define covering of the projection data and minimal number of points in a hypercube to be cluster
         cluster_params = clusterer.get_params()
         min_cluster_samples = cluster_params.get("min_samples", 1)
-        if self.verbose >= 1:
-            print("...minimal number of points in hypercube to do clustering: %d" % (min_cluster_samples,))
-            # print("...iterating ")
+
         # generate hypercubes from the cover and perform clustering analysis
         cubes = cover.hypercubes
         data_idx = np.arange(data.shape[0])
@@ -122,7 +117,8 @@ class Mapper(object):
         if clusterer.metric == "precomputed":
             assert data_vals.shape[0] == data_vals.shape[1]
 
-        for cube in _iteration:
+        cube2node = {}
+        for cube_id, cube in enumerate(_iteration):
             if clusterer.metric != "precomputed":
                 cube_data = data_vals[cube]
             else:
@@ -134,6 +130,7 @@ class Mapper(object):
                 raw_point_mask[cube_data_idx] = True
                 if (clusterer is not None) and ("fit" in dir(clusterer)):
                     clusterer.fit(cube_data)
+                    cube2node[cube_id] = []
                     for label in np.unique(clusterer.labels_):
                         # the "-1" label is used for "un-clustered" points!!!
                         if label != -1:
@@ -141,8 +138,8 @@ class Mapper(object):
                             point_mask[cube_data_idx[clusterer.labels_ == label]] = True
                             nodes[node_id] = point_mask
                             raw_nodes[node_id] = raw_point_mask
+                            cube2node[cube_id].append(node_id)
                             node_id += 1
-
                 else:
                     # assumed to have a whole cluster of cubes!!!
                     # it equals to the raw node2samples
@@ -150,6 +147,9 @@ class Mapper(object):
                     node_id += 1
 
         if self.verbose >= 1:
+            print("Mapping on data %s using lens %s" %
+                  (str(data.shape), str(cover.data.shape)))
+            print("...minimal number of points in hypercube to do clustering: %d" % (min_cluster_samples,))
             print("...create %s nodes." % (len(nodes)))
         # no cluster of nodes, and return None
         if len(nodes) == 0:
@@ -175,7 +175,9 @@ class Mapper(object):
 
         node_ids = nodes.keys()
 
-        edges = [edge for edge in itertools.combinations(node_ids, 2) if np.any(nodes[edge[0]] & nodes[edge[1]])]
+        edges = [edge
+                 for edge in itertools.combinations(node_ids, 2)
+                 if np.any(nodes[edge[0]] & nodes[edge[1]])]
         # edges_df = pd.DataFrame(columns=['Source', 'End'], data=np.array(edges))
         # adj_matrix = pd.crosstab(edges_df.Source, edges_df.End)
         # adj_matrix = adj_matrix.reindex(index=node_ids, columns=node_ids).replace(0, np.nan)
@@ -206,6 +208,7 @@ class Mapper(object):
         graph._add_node(nodes)
         graph._add_edge(edges)
         graph._add_node_pos(node_positions)
+        graph._add_cube2node(cube2node)
         graph._record_params({'clusterer': clusterer,
                               'cover': cover,
                               'lens': self.lens,

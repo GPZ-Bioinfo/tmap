@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 from scipy.spatial.distance import squareform, pdist
 from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import MinMaxScaler
@@ -33,17 +31,17 @@ graph = tm.map(data=X, cover=cover, clusterer=clusterer)
 # prepare graph
 ############################################################
 
-safe_scores = SAFE_batch(graph, metadata, n_iter=50, _mode='both')
+safe_scores = SAFE_batch(graph, metadata, n_iter=500, _mode='both')
 enriched_scores, declined_scores = safe_scores['enrich'],safe_scores['decline']
 num_n = len(graph.nodes)
 num_f = metadata.shape[1]
 assert enriched_scores.shape == (num_n, num_f)
 assert declined_scores.shape == (num_n, num_f)
 
-enriched_scores = SAFE_batch(graph, metadata, n_iter=50, _mode='enrich')
+enriched_scores = SAFE_batch(graph, metadata, n_iter=500, _mode='enrich')
 assert enriched_scores.shape == (num_n, num_f)
 
-safe_scores = SAFE_batch(graph, metadata, n_iter=50, shuffle_by='sample', _mode='both')
+safe_scores = SAFE_batch(graph, metadata, n_iter=500, shuffle_by='sample', _mode='both')
 enriched_scores, declined_scores = safe_scores['enrich'],safe_scores['decline']
 assert enriched_scores.shape == (num_n, num_f)
 assert declined_scores.shape == (num_n, num_f)
